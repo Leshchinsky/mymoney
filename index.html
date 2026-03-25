@@ -762,7 +762,7 @@ let transactions = [], savings = [], debts = [], goals = [], tasks = [];
 let currencies = { USD:3.60, EUR:3.90, BYN:1.25, UAH:0.08 };
 let points = parseInt(localStorage.getItem('flp_pts')||'0');
 let _ach = JSON.parse(localStorage.getItem('flp_ach')||'{}');
-let selM = 3, selY = 2026;
+const _now = new Date(); let selM = _now.getMonth(), selY = _now.getFullYear();
 let syncPending = false;
 
 function setSyncStatus(s) {
