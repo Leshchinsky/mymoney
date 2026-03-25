@@ -1126,7 +1126,7 @@ function checkAch(){ ACHS.forEach(a=>{ if(!_ach[a.id]&&a.chk()){_ach[a.id]=true;
 // ════════════════════════════════════════════════════
 // HELPERS
 // ════════════════════════════════════════════════════
-function fmt(n){ return new Intl.NumberFormat('ru-RU',{minimumFractionDigits:0,maximumFractionDigits:0}).format(n||0); }
+function fmt(n){ return new Intl.NumberFormat('ru-RU',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n||0); }
 function fmt2(n){ return new Intl.NumberFormat('ru-RU',{minimumFractionDigits:0,maximumFractionDigits:2}).format(n||0); }
 function fmtD(s){ if(!s)return''; try{const d=new Date(s);return d.toLocaleDateString('ru-RU',{day:'numeric',month:'short'});}catch{return s;} }
 function toast(msg){ const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2500); }
