@@ -1,0 +1,1395 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FinLife Pro">
+<title>FinLife Pro</title>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;700;900&family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#07080d;--bg2:#0d0f18;--bg3:#131520;--card:#161824;--card2:#1c1f2e;
+  --border:#252838;--border2:#2f3347;
+  --a:#5b6ef5;--a2:#7b8bff;--aglow:rgba(91,110,245,0.25);
+  --g:#00c97a;--g2:#00f090;--gdim:rgba(0,201,122,0.13);
+  --r:#ff4060;--rdim:rgba(255,64,96,0.13);
+  --y:#ffc94d;--ydim:rgba(255,201,77,0.13);
+  --b:#38c4f0;--bdim:rgba(56,196,240,0.13);
+  --p:#c855ff;--pdim:rgba(200,85,255,0.13);
+  --t:#f0f2ff;--t2:#8890b8;--t3:#454870;
+  --r8:8px;--r12:12px;--r16:16px;--r20:20px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--t);font-family:'Manrope',sans-serif;font-size:15px}
+
+/* PIN */
+#pinScreen{position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center}
+.pin-logo{font-family:'Unbounded',sans-serif;font-size:26px;font-weight:900;margin-bottom:6px}
+.pin-logo span{color:var(--a2)}
+.pin-sub{font-size:13px;color:var(--t3);margin-bottom:36px}
+.pin-dots{display:flex;gap:16px;margin-bottom:32px}
+.pin-dot{width:15px;height:15px;border-radius:50%;border:2px solid var(--border2);transition:all 0.2s}
+.pin-dot.filled{background:var(--a2);border-color:var(--a2)}
+.pin-dot.error{background:var(--r);border-color:var(--r)}
+.pin-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:252px}
+.pin-key{height:62px;border-radius:var(--r16);border:1px solid var(--border);background:var(--card);color:var(--t);font-family:'Unbounded',sans-serif;font-size:20px;font-weight:600;cursor:pointer;transition:all 0.15s;display:flex;align-items:center;justify-content:center}
+.pin-key:active{background:var(--a);border-color:var(--a);transform:scale(0.93)}
+.pin-key.del{font-size:13px;color:var(--t2)}
+.pin-hint{font-size:11px;color:var(--t3);margin-top:16px;text-align:center;min-height:16px}
+.pin-setup{font-size:12px;color:var(--t2);margin-bottom:10px;text-align:center}
+@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-7px)}40%,80%{transform:translateX(7px)}}
+.shake{animation:shake 0.38s ease}
+
+/* SYNC INDICATOR */
+.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--g);display:inline-block;margin-left:6px;animation:pulse 2s infinite}
+.sync-dot.syncing{background:var(--y);animation:spin 1s linear infinite}
+.sync-dot.error{background:var(--r);animation:none}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+
+/* APP */
+#app{display:none;height:100dvh;flex-direction:column;overflow:hidden}
+#app.on{display:flex}
+
+/* LOADING */
+#loadScreen{position:fixed;inset:0;z-index:500;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px}
+.load-logo{font-family:'Unbounded',sans-serif;font-size:22px;font-weight:700}
+.load-logo span{color:var(--a2)}
+.load-spinner{width:36px;height:36px;border:3px solid var(--border2);border-top-color:var(--a2);border-radius:50%;animation:spin 0.8s linear infinite}
+.load-text{font-size:12px;color:var(--t3)}
+
+/* HEADER */
+.hdr{flex-shrink:0;background:rgba(7,8,13,0.93);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:12px 14px 10px;display:flex;align-items:center;justify-content:space-between;z-index:50}
+.hdr-left{display:flex;align-items:center;gap:6px}
+.hdr-logo{font-family:'Unbounded',sans-serif;font-size:15px;font-weight:700}
+.hdr-logo span{color:var(--a2)}
+.month-wrap{display:flex;align-items:center;gap:3px;background:var(--card2);border:1px solid var(--border2);border-radius:20px;padding:4px 10px}
+.month-wrap select{background:none;border:none;color:var(--t2);font-family:'Manrope',sans-serif;font-size:11px;font-weight:600;cursor:pointer;outline:none;-webkit-appearance:none}
+.hdr-right{display:flex;align-items:center;gap:4px}
+.hdr-btn{background:none;border:none;color:var(--t3);cursor:pointer;font-size:16px;padding:4px;line-height:1}
+
+/* NAV */
+.nav{flex-shrink:0;background:rgba(13,15,24,0.97);backdrop-filter:blur(20px);border-top:1px solid var(--border);display:flex;padding:5px 0 max(5px,env(safe-area-inset-bottom))}
+.nb{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;padding:5px 2px;color:var(--t3);transition:color 0.2s}
+.nb.active{color:var(--a2)}
+.nb svg{width:19px;height:19px}
+.nb span{font-size:9px;font-weight:600;letter-spacing:0.2px}
+.nb-wrap{position:relative}
+.nb-dot{position:absolute;top:-2px;right:-2px;width:6px;height:6px;background:var(--r);border-radius:50%;border:1.5px solid var(--bg2)}
+
+/* CONTENT */
+.content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+.content::-webkit-scrollbar{display:none}
+.screen{display:none;padding:12px 12px 16px;animation:fadeUp 0.26s ease both}
+.screen.active{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* COMMON */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r16);padding:14px;margin-bottom:10px}
+.sec-title{font-size:10px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:var(--t3);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+.sec-add{font-size:12px;color:var(--a2);cursor:pointer;letter-spacing:0;text-transform:none;font-weight:700;background:none;border:none;font-family:'Manrope',sans-serif}
+
+/* HERO */
+.hero{background:linear-gradient(135deg,#0e1028 0%,#111530 50%,#0a1535 100%);border:1px solid rgba(91,110,245,0.25);border-radius:var(--r20);padding:18px;margin-bottom:10px;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;top:-40px;right:-30px;width:150px;height:150px;background:radial-gradient(circle,rgba(91,110,245,0.18) 0%,transparent 70%);pointer-events:none}
+.hero-lbl{font-size:11px;color:var(--t2);margin-bottom:5px}
+.hero-amt{font-family:'Unbounded',sans-serif;font-size:32px;font-weight:700;letter-spacing:-1px;line-height:1}
+.pos{color:var(--g)}.neg{color:var(--r)}
+.hero-row{display:flex;gap:8px;margin-top:12px}
+.hm{flex:1;background:rgba(255,255,255,0.05);border-radius:var(--r12);padding:9px 10px}
+.hm-l{font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:0.7px;margin-bottom:3px}
+.hm-v{font-family:'Unbounded',sans-serif;font-size:12px;font-weight:700}
+
+/* SBOX */
+.sbox{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r12);padding:12px;margin-bottom:10px}
+.srow{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border)}
+.srow:last-child{border-bottom:none}
+.srow.bold .sl{font-size:13px;font-weight:700;color:var(--t)}
+.srow.bold .sv{font-size:14px}
+.sl{font-size:12px;color:var(--t2)}
+.sv{font-family:'Unbounded',sans-serif;font-size:12px;font-weight:700}
+
+/* QUICK BTNS */
+.qrow{display:flex;gap:7px;margin-bottom:10px}
+.qbtn{flex:1;border:1px solid var(--border2);border-radius:var(--r12);padding:10px 5px;background:var(--card);color:var(--t2);font-family:'Manrope',sans-serif;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;transition:all 0.15s}
+.qbtn:active{transform:scale(0.96)}
+.qbtn.inc{background:var(--gdim);border-color:rgba(0,201,122,0.3);color:var(--g)}
+.qbtn.exp{background:var(--rdim);border-color:rgba(255,64,96,0.3);color:var(--r)}
+.qbtn.sav{background:var(--ydim);border-color:rgba(255,201,77,0.3);color:var(--y)}
+.qbtn.cvt{background:var(--bdim);border-color:rgba(56,196,240,0.3);color:var(--b)}
+
+/* TABLE */
+.tbl{width:100%;border-collapse:collapse;font-size:12px}
+.tbl th{background:var(--bg3);color:var(--t3);font-weight:600;padding:7px 8px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid var(--border)}
+.tbl td{padding:8px;border-bottom:1px solid var(--border);vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:rgba(255,255,255,0.015)}
+.amt{font-family:'Unbounded',sans-serif;font-size:12px;font-weight:600;white-space:nowrap}
+.amt.g{color:var(--g)}.amt.r{color:var(--r)}
+.paid-btn{width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;cursor:pointer;transition:all 0.2s;border:1.5px solid;background:none}
+.paid-btn.unpaid{border-color:var(--border2);color:var(--t3)}
+.paid-btn.paid{background:var(--gdim);border-color:var(--g);color:var(--g)}
+.chip{display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px}
+.del-btn{background:none;border:none;color:var(--t3);cursor:pointer;font-size:13px;padding:2px 5px;transition:color 0.15s;line-height:1}
+.del-btn:active{color:var(--r)}
+.edit-btn{background:none;border:none;color:var(--t3);cursor:pointer;font-size:13px;padding:2px 5px}
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tbl-wrap::-webkit-scrollbar{display:none}
+.cat-hdr{display:flex;align-items:center;gap:8px;padding:9px 0 6px;border-bottom:2px solid var(--border);margin-bottom:2px}
+.cat-hdr-total{margin-left:auto;font-family:'Unbounded',sans-serif;font-size:12px;color:var(--t2);font-weight:700}
+
+/* CHIP COLORS */
+.c-kvart{background:rgba(91,110,245,0.15);color:var(--a2)}
+.c-school{background:rgba(0,201,122,0.15);color:var(--g)}
+.c-food{background:rgba(255,201,77,0.15);color:var(--y)}
+.c-digital{background:rgba(200,85,255,0.15);color:var(--p)}
+.c-dev{background:rgba(56,196,240,0.15);color:var(--b)}
+.c-beauty{background:rgba(255,64,96,0.15);color:var(--r)}
+.c-car{background:rgba(255,120,50,0.15);color:#ff7832}
+.c-tax{background:rgba(130,130,190,0.15);color:#9898cc}
+.c-loan{background:rgba(200,85,255,0.15);color:var(--p)}
+.c-ins{background:rgba(56,196,240,0.15);color:var(--b)}
+.c-debt{background:rgba(255,64,96,0.15);color:var(--r)}
+.c-misc{background:rgba(100,100,140,0.15);color:#8888aa}
+.c-chem{background:rgba(0,201,122,0.1);color:#55bb88}
+
+/* SAVINGS */
+.sav-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border)}
+.sav-row:last-child{border-bottom:none}
+.sav-name{font-size:13px;font-weight:500}
+.sav-right{display:flex;align-items:center;gap:8px}
+.sav-val{font-family:'Unbounded',sans-serif;font-size:13px;font-weight:700;color:var(--y)}
+.debt-val{color:var(--r)}
+
+/* CURRENCY CONVERTER */
+.cvt-card{background:linear-gradient(135deg,#0a1535,#0e1028);border:1px solid rgba(56,196,240,0.25);border-radius:var(--r16);padding:16px;margin-bottom:10px}
+.cvt-title{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--b);margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
+.cvt-row{display:flex;gap:8px;align-items:flex-end;margin-bottom:12px}
+.cvt-input-wrap{flex:1}
+.cvt-lbl{font-size:10px;color:var(--t3);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px}
+.cvt-input{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r12);padding:10px 12px;color:var(--t);font-family:'Unbounded',sans-serif;font-size:16px;outline:none;transition:border-color 0.2s}
+.cvt-input:focus{border-color:var(--b)}
+.cvt-sel{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r12);padding:10px 12px;color:var(--t2);font-family:'Manrope',sans-serif;font-size:13px;font-weight:600;outline:none;-webkit-appearance:none;cursor:pointer}
+.cvt-arrow{color:var(--t3);font-size:20px;padding:0 4px;flex-shrink:0;margin-bottom:10px}
+.cvt-result{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r12);padding:12px 14px;text-align:center;margin-top:4px}
+.cvt-result-val{font-family:'Unbounded',sans-serif;font-size:22px;font-weight:700;color:var(--b)}
+.cvt-result-lbl{font-size:11px;color:var(--t3);margin-top:4px}
+.cvt-rates-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:12px}
+.cvt-rate-item{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r12);padding:10px;display:flex;justify-content:space-between;align-items:center}
+.cvt-rate-code{font-size:12px;font-weight:700;color:var(--t2)}
+.cvt-rate-val{font-family:'Unbounded',sans-serif;font-size:13px;font-weight:700;color:var(--b)}
+.cvt-rate-edit{background:none;border:none;color:var(--t3);cursor:pointer;font-size:12px;padding:2px}
+
+/* GOALS */
+.goal-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r16);padding:14px;margin-bottom:10px}
+.goal-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px}
+.g-em{font-size:24px;margin-right:10px;flex-shrink:0}
+.g-name{font-size:14px;font-weight:700;margin-bottom:2px}
+.g-type{display:inline-block;padding:2px 7px;border-radius:4px;font-size:9px;font-weight:700;letter-spacing:0.7px;text-transform:uppercase;margin-bottom:3px}
+.gt-fin{background:var(--gdim);color:var(--g)}
+.gt-habit{background:var(--bdim);color:var(--b)}
+.gt-sport{background:rgba(255,120,50,0.15);color:#ff7832}
+.gt-health{background:var(--rdim);color:var(--r)}
+.g-pct{font-family:'Unbounded',sans-serif;font-size:20px;font-weight:700;color:var(--a2)}
+.prog-bar{height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;margin:8px 0}
+.prog-fill{height:100%;border-radius:3px;transition:width 0.5s cubic-bezier(.34,1.56,.64,1)}
+.g-meta{display:flex;justify-content:space-between;font-size:11px;color:var(--t3)}
+.g-streak{font-size:11px;color:var(--y);font-weight:600;margin-top:5px}
+.g-actions{display:flex;gap:8px;margin-top:10px}
+.g-btn{flex:1;background:none;border:1px solid var(--border2);border-radius:var(--r8);padding:7px;font-family:'Manrope',sans-serif;font-size:11px;font-weight:600;cursor:pointer;color:var(--t2);transition:all 0.2s}
+.g-btn.checkin{background:var(--gdim);border-color:var(--g);color:var(--g)}
+
+/* SCORE */
+.score-card{background:linear-gradient(135deg,#0e1028,#12152a);border:1px solid rgba(91,110,245,0.2);border-radius:var(--r16);padding:14px;margin-bottom:10px;display:flex;align-items:center;gap:14px}
+.score-ring{width:58px;height:58px;transform:rotate(-90deg);flex-shrink:0}
+.score-ring circle{fill:none;stroke-width:5;stroke-linecap:round}
+.score-ring .trk{stroke:var(--border2)}.score-ring .fil{stroke:var(--a2);stroke-dasharray:157;transition:stroke-dashoffset 1s cubic-bezier(.34,1.56,.64,1)}
+.score-lbl{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px}
+.score-num{font-family:'Unbounded',sans-serif;font-size:24px;font-weight:700;color:var(--a2);line-height:1}
+.score-lvl{font-size:11px;color:var(--t3);margin-top:3px}
+
+/* ACHIEVEMENTS */
+.ach-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.ach{background:var(--card);border:1px solid var(--border);border-radius:var(--r12);padding:12px 8px;text-align:center}
+.ach.got{border-color:var(--y);background:var(--ydim)}
+.ach:not(.got){filter:grayscale(1);opacity:0.4}
+.ach-em{font-size:24px;margin-bottom:4px}
+.ach-nm{font-size:10px;font-weight:600;line-height:1.3;color:var(--t2)}
+.ach.got .ach-nm{color:var(--y)}
+.ach-pts{font-size:9px;color:var(--y);font-weight:700;margin-top:2px}
+
+/* TASKS */
+.task-row{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.task-row:last-child{border-bottom:none}
+.t-chk{width:20px;height:20px;border-radius:50%;border:2px solid var(--border2);background:none;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;margin-top:1px;transition:all 0.2s}
+.t-chk.done{background:var(--g);border-color:var(--g)}
+.t-chk.done::after{content:'✓';color:#000;font-size:11px;font-weight:800}
+.t-body{flex:1}
+.t-txt{font-size:13px;font-weight:500;line-height:1.4}
+.task-row.is-done .t-txt{text-decoration:line-through;color:var(--t3)}
+.t-meta{display:flex;gap:5px;margin-top:3px;align-items:center}
+.t-tag{font-size:9px;font-weight:700;letter-spacing:0.4px;text-transform:uppercase;padding:2px 6px;border-radius:4px}
+.tt-fin{background:rgba(91,110,245,0.15);color:var(--a2)}
+.tt-personal{background:var(--gdim);color:var(--g)}
+.tt-work{background:var(--bdim);color:var(--b)}
+.tt-urgent{background:var(--rdim);color:var(--r)}
+.t-due{font-size:10px;color:var(--t3)}
+
+/* STATS */
+.stat-row{margin-bottom:10px}
+.stat-top{display:flex;justify-content:space-between;margin-bottom:4px;font-size:12px}
+.stat-name{color:var(--t2);font-weight:500}
+.stat-val-t{color:var(--t);font-family:'Unbounded',sans-serif;font-size:11px;font-weight:700}
+
+/* GRID */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.sc{background:var(--card);border:1px solid var(--border);border-radius:var(--r16);padding:13px;position:relative;overflow:hidden}
+.sc::before{content:'';position:absolute;top:-25px;right:-15px;width:70px;height:70px;border-radius:50%;opacity:0.13;pointer-events:none}
+.sc.g::before{background:var(--g)}.sc.r::before{background:var(--r)}.sc.y::before{background:var(--y)}.sc.b::before{background:var(--b)}
+.sc-lbl{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:5px}
+.sc-val{font-family:'Unbounded',sans-serif;font-size:15px;font-weight:700;line-height:1}
+
+/* PILLS */
+.pills{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:10px;scrollbar-width:none}
+.pills::-webkit-scrollbar{display:none}
+.pill{flex-shrink:0;padding:5px 12px;border-radius:16px;font-size:11px;font-weight:600;cursor:pointer;background:var(--card2);border:1px solid var(--border);color:var(--t2);transition:all 0.2s}
+.pill.on{background:var(--a);border-color:var(--a);color:#fff}
+
+/* MODAL */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,0.72);z-index:200;display:flex;align-items:flex-end;opacity:0;pointer-events:none;transition:opacity 0.22s;backdrop-filter:blur(6px)}
+.overlay.open{opacity:1;pointer-events:all}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:22px 22px 0 0;padding:18px 18px max(20px,env(safe-area-inset-bottom));width:100%;max-width:430px;margin:0 auto;transform:translateY(100%);transition:transform 0.28s cubic-bezier(.32,.72,0,1);max-height:88dvh;overflow-y:auto}
+.overlay.open .modal{transform:translateY(0)}
+.modal-handle{width:34px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 16px}
+.modal-title{font-family:'Unbounded',sans-serif;font-size:17px;font-weight:700;margin-bottom:16px}
+.fg{margin-bottom:11px}
+.fl{font-size:10px;font-weight:700;letter-spacing:0.5px;color:var(--t2);margin-bottom:5px;display:block;text-transform:uppercase}
+.fi{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r12);padding:10px 12px;color:var(--t);font-family:'Manrope',sans-serif;font-size:14px;outline:none;transition:border-color 0.2s;-webkit-appearance:none}
+.fi:focus{border-color:var(--a)}
+.fi::placeholder{color:var(--t3)}
+.frow{display:flex;gap:8px}
+.frow .fg{flex:1}
+.type-row{display:flex;gap:8px;margin-bottom:12px}
+.type-btn{flex:1;padding:9px;border-radius:var(--r12);border:1px solid var(--border2);background:none;color:var(--t2);font-family:'Manrope',sans-serif;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.2s}
+.type-btn.a-inc{background:var(--gdim);border-color:var(--g);color:var(--g)}
+.type-btn.a-exp{background:var(--rdim);border-color:var(--r);color:var(--r)}
+.sub-btn{width:100%;padding:14px;border:none;border-radius:var(--r12);background:var(--a);color:#fff;font-family:'Manrope',sans-serif;font-size:15px;font-weight:700;cursor:pointer;transition:all 0.2s;margin-top:4px}
+.sub-btn:active{transform:scale(0.98);background:var(--a2)}
+.cancel-btn{width:100%;padding:10px;border:1px solid var(--border2);border-radius:var(--r12);background:none;color:var(--t2);font-family:'Manrope',sans-serif;font-size:13px;font-weight:600;cursor:pointer;margin-top:6px}
+
+/* CURRENCY INPUT ADDON */
+.input-with-cur{position:relative}
+.input-with-cur .fi{padding-right:80px}
+.cur-sel-inline{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:var(--card2);border:1px solid var(--border2);border-radius:var(--r8);padding:4px 8px;color:var(--t2);font-family:'Manrope',sans-serif;font-size:12px;font-weight:600;cursor:pointer;outline:none;-webkit-appearance:none}
+.converted-hint{font-size:11px;color:var(--b);margin-top:4px;min-height:16px;font-weight:600}
+
+/* EXPORT BTN */
+.exp-btn{display:flex;align-items:center;gap:8px;background:var(--card2);border:1px solid var(--border2);border-radius:var(--r12);padding:10px 14px;color:var(--t2);font-family:'Manrope',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s;width:100%;margin-bottom:10px}
+.exp-btn:active{border-color:var(--a);color:var(--a2)}
+
+/* TOAST */
+.toast{position:fixed;top:68px;left:50%;transform:translateX(-50%) translateY(-14px);background:var(--card2);border:1px solid var(--border2);padding:8px 18px;border-radius:20px;font-size:13px;font-weight:600;z-index:500;opacity:0;transition:all 0.25s;white-space:nowrap;box-shadow:0 8px 32px rgba(0,0,0,0.5);pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* EMPTY */
+.empty{text-align:center;padding:28px 16px;color:var(--t3)}
+.empty-em{font-size:32px;margin-bottom:8px}
+.empty p{font-size:13px}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loadScreen">
+  <div class="load-logo">Fin<span>Life</span> Pro</div>
+  <div class="load-spinner"></div>
+  <div class="load-text" id="loadText">Подключение к базе данных...</div>
+</div>
+
+<!-- PIN -->
+<div id="pinScreen" style="display:none">
+  <div class="pin-logo">Fin<span>Life</span> Pro</div>
+  <div class="pin-sub" id="pinSub">Введи PIN для входа</div>
+  <div class="pin-dots" id="pinDots">
+    <div class="pin-dot" id="pd0"></div><div class="pin-dot" id="pd1"></div>
+    <div class="pin-dot" id="pd2"></div><div class="pin-dot" id="pd3"></div>
+  </div>
+  <div class="pin-setup" id="pinSetup" style="display:none"></div>
+  <div class="pin-grid">
+    <button class="pin-key" onclick="pp('1')">1</button><button class="pin-key" onclick="pp('2')">2</button><button class="pin-key" onclick="pp('3')">3</button>
+    <button class="pin-key" onclick="pp('4')">4</button><button class="pin-key" onclick="pp('5')">5</button><button class="pin-key" onclick="pp('6')">6</button>
+    <button class="pin-key" onclick="pp('7')">7</button><button class="pin-key" onclick="pp('8')">8</button><button class="pin-key" onclick="pp('9')">9</button>
+    <button class="pin-key" style="visibility:hidden"></button><button class="pin-key" onclick="pp('0')">0</button><button class="pin-key del" onclick="pd()">⌫</button>
+  </div>
+  <div class="pin-hint" id="pinHint"></div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="hdr">
+    <div class="hdr-left">
+      <div class="hdr-logo">Fin<span>Life</span><span class="sync-dot" id="syncDot"></span></div>
+    </div>
+    <div class="month-wrap">
+      <select id="mSel" onchange="onMC()"></select>
+      <select id="ySel" onchange="onMC()" style="margin-left:3px"></select>
+    </div>
+    <div class="hdr-right">
+      <button class="hdr-btn" onclick="sw('converter')" title="Конвертор">💱</button>
+      <button class="hdr-btn" onclick="openOv('settingsOv')" title="Настройки">⚙️</button>
+      <button class="hdr-btn" onclick="lockApp()" title="Заблокировать">🔒</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- HOME -->
+    <div class="screen active" id="sc-home">
+      <div class="hero">
+        <div class="hero-lbl">Остаток месяца</div>
+        <div class="hero-amt" id="hAmt">— ZL</div>
+        <div class="hero-row">
+          <div class="hm"><div class="hm-l">Доходы</div><div class="hm-v pos" id="hInc">—</div></div>
+          <div class="hm"><div class="hm-l">Расходы (факт)</div><div class="hm-v neg" id="hExp">—</div></div>
+          <div class="hm"><div class="hm-l">Накоплено</div><div class="hm-v" style="color:var(--y)" id="hSav">—</div></div>
+        </div>
+      </div>
+      <div class="sbox" id="homeSbox"></div>
+      <div class="qrow">
+        <button class="qbtn inc" onclick="openTx('income')">＋ Доход</button>
+        <button class="qbtn exp" onclick="openTx('expense')">— Расход</button>
+        <button class="qbtn sav" onclick="openOv('savOv')">⭐ Накопление</button>
+        <button class="qbtn cvt" onclick="sw('converter')">💱</button>
+      </div>
+      <div class="card">
+        <div class="sec-title">Последние операции <button class="sec-add" onclick="sw('payments')">Все →</button></div>
+        <div id="homeRecent"></div>
+      </div>
+    </div>
+
+    <!-- PAYMENTS -->
+    <div class="screen" id="sc-payments">
+      <div class="sec-title">Доходы <button class="sec-add" onclick="openTx('income')">+ Добавить</button></div>
+      <div class="card" style="margin-bottom:10px">
+        <div id="incTable"></div>
+        <div style="display:flex;justify-content:space-between;padding:9px 0 0;border-top:1px solid var(--border);margin-top:4px">
+          <span style="font-size:11px;color:var(--t2);font-weight:700;text-transform:uppercase;letter-spacing:0.5px">Итого доходы</span>
+          <span class="amt g" id="incTotal">0 ZL</span>
+        </div>
+      </div>
+      <div class="sec-title">Расходы <button class="sec-add" onclick="openTx('expense')">+ Добавить</button></div>
+      <div id="expByCat"></div>
+      <div class="sbox" id="paySbox"></div>
+      <button class="exp-btn" onclick="exportCSV()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Экспорт в Excel (CSV)
+      </button>
+    </div>
+
+    <!-- CONVERTER -->
+    <div class="screen" id="sc-converter">
+      <div class="cvt-card">
+        <div class="cvt-title">
+          💱 Конвертор валют
+          <span style="font-size:10px;color:var(--t3);letter-spacing:0">Курсы к ZL</span>
+        </div>
+        <div class="cvt-row">
+          <div class="cvt-input-wrap">
+            <div class="cvt-lbl">Сумма</div>
+            <input class="cvt-input" id="cvtAmt" type="number" placeholder="100" oninput="calcCvt()">
+          </div>
+          <div class="cvt-arrow">→</div>
+          <div class="cvt-input-wrap">
+            <div class="cvt-lbl">Из валюты</div>
+            <select class="cvt-sel" id="cvtFrom" onchange="calcCvt()">
+              <option value="USD">USD $</option>
+              <option value="EUR">EUR €</option>
+              <option value="BYN">BYN р.</option>
+              <option value="UAH">UAH ₴</option>
+              <option value="ZL">ZL zł</option>
+            </select>
+          </div>
+          <div class="cvt-arrow">→</div>
+          <div class="cvt-input-wrap">
+            <div class="cvt-lbl">В валюту</div>
+            <select class="cvt-sel" id="cvtTo" onchange="calcCvt()">
+              <option value="ZL">ZL zł</option>
+              <option value="USD">USD $</option>
+              <option value="EUR">EUR €</option>
+              <option value="BYN">BYN р.</option>
+              <option value="UAH">UAH ₴</option>
+            </select>
+          </div>
+        </div>
+        <div class="cvt-result">
+          <div class="cvt-result-val" id="cvtResult">—</div>
+          <div class="cvt-result-lbl" id="cvtResultLbl">Введи сумму для конвертации</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="sec-title">Курсы к ZL <button class="sec-add" onclick="openOv('rateOv')">✏️ Изменить</button></div>
+        <div id="ratesGrid" class="cvt-rates-grid"></div>
+        <div style="font-size:10px;color:var(--t3);margin-top:10px;text-align:center">Обновляй курсы вручную раз в неделю</div>
+      </div>
+
+      <div class="card">
+        <div class="sec-title">Быстрый расчёт</div>
+        <div style="font-size:12px;color:var(--t2);margin-bottom:10px">Введи сумму в любой валюте — получишь ZL для записи в бюджет</div>
+        <div class="frow" style="margin-bottom:8px">
+          <div class="fg">
+            <label class="fl">Сумма</label>
+            <input class="fi" id="quickAmt" type="number" placeholder="100" oninput="calcQuick()">
+          </div>
+          <div class="fg">
+            <label class="fl">Валюта</label>
+            <select class="fi" id="quickCur" onchange="calcQuick()" style="-webkit-appearance:none">
+              <option value="USD">USD $</option>
+              <option value="EUR">EUR €</option>
+              <option value="BYN">BYN р.</option>
+              <option value="UAH">UAH ₴</option>
+            </select>
+          </div>
+        </div>
+        <div id="quickResult" style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r12);padding:12px;text-align:center">
+          <div style="font-family:'Unbounded',sans-serif;font-size:20px;font-weight:700;color:var(--g)" id="quickZl">—</div>
+          <div style="font-size:11px;color:var(--t3);margin-top:4px">ZL (злотых)</div>
+        </div>
+        <button class="sub-btn" style="margin-top:10px" onclick="addFromConverter()">+ Добавить как расход</button>
+      </div>
+    </div>
+
+    <!-- SAVINGS -->
+    <div class="screen" id="sc-savings">
+      <div class="g2">
+        <div class="sc y"><div class="sc-lbl">Накоплено ZL</div><div class="sc-val" style="color:var(--y)" id="savTotZl">—</div></div>
+        <div class="sc b"><div class="sc-lbl">Накоплено $</div><div class="sc-val" style="color:var(--b)" id="savTotUsd">—</div></div>
+      </div>
+      <div class="sec-title">Накопления <button class="sec-add" onclick="openOv('savOv')">+ Добавить</button></div>
+      <div class="card" id="savList"></div>
+      <div class="sec-title" style="margin-top:14px">Долги общие <button class="sec-add" onclick="openOv('debtOv')">+ Добавить</button></div>
+      <div class="card" id="debtList"></div>
+    </div>
+
+    <!-- GOALS -->
+    <div class="screen" id="sc-goals">
+      <div class="score-card">
+        <svg class="score-ring" viewBox="0 0 56 56">
+          <circle class="trk" cx="28" cy="28" r="25"/>
+          <circle class="fil" id="sRing" cx="28" cy="28" r="25" stroke-dashoffset="157"/>
+        </svg>
+        <div>
+          <div class="score-lbl">Финансовый счёт</div>
+          <div class="score-num" id="sNum">0</div>
+          <div class="score-lvl" id="sLvl">Начинающий</div>
+        </div>
+      </div>
+      <div class="sec-title">Цели <button class="sec-add" onclick="openOv('goalOv')">+ Новая цель</button></div>
+      <div id="goalsList"></div>
+      <div class="sec-title" style="margin-top:14px">Достижения</div>
+      <div class="ach-grid" id="achGrid"></div>
+    </div>
+
+    <!-- TASKS -->
+    <div class="screen" id="sc-tasks">
+      <div class="g2">
+        <div class="sc"><div class="sc-lbl">Всего</div><div class="sc-val" id="tTot">0</div></div>
+        <div class="sc g"><div class="sc-lbl">Выполнено</div><div class="sc-val pos" id="tDone">0</div></div>
+      </div>
+      <div class="pills" id="tPills">
+        <div class="pill on" data-tag="all">Все</div>
+        <div class="pill" data-tag="finance">💜 Финансы</div>
+        <div class="pill" data-tag="personal">🌱 Личное</div>
+        <div class="pill" data-tag="work">💼 Работа</div>
+        <div class="pill" data-tag="urgent">🔥 Срочно</div>
+      </div>
+      <div class="card">
+        <div class="sec-title">Задачи <button class="sec-add" onclick="openOv('taskOv')">+ Добавить</button></div>
+        <div id="taskList"></div>
+      </div>
+    </div>
+
+    <!-- STATS -->
+    <div class="screen" id="sc-stats">
+      <div class="g2">
+        <div class="sc g"><div class="sc-lbl">Доходы</div><div class="sc-val pos" id="stInc">—</div></div>
+        <div class="sc r"><div class="sc-lbl">Расходы</div><div class="sc-val neg" id="stExp">—</div></div>
+      </div>
+      <div class="card"><div class="sec-title">По категориям</div><div id="stCats"></div></div>
+      <div class="card"><div class="sec-title">Топ-5 расходов</div><div id="stTop"></div></div>
+    </div>
+
+  </div>
+
+  <nav class="nav">
+    <button class="nb active" onclick="sw('home')" id="nb-home">
+      <div class="nb-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div><span>Главная</span>
+    </button>
+    <button class="nb" onclick="sw('payments')" id="nb-payments">
+      <div class="nb-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></div><span>Платежи</span>
+    </button>
+    <button class="nb" onclick="sw('converter')" id="nb-converter">
+      <div class="nb-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div><span>Конвертор</span>
+    </button>
+    <button class="nb" onclick="sw('savings')" id="nb-savings">
+      <div class="nb-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></div><span>Сбережения</span>
+    </button>
+    <button class="nb" onclick="sw('goals')" id="nb-goals">
+      <div class="nb-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div><span>Цели</span>
+    </button>
+    <button class="nb" onclick="sw('tasks')" id="nb-tasks">
+      <div class="nb-wrap" id="tNavWrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></div><span>Задачи</span>
+    </button>
+    <button class="nb" onclick="sw('stats')" id="nb-stats">
+      <div class="nb-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div><span>Статистика</span>
+    </button>
+  </nav>
+</div>
+
+<!-- MODALS -->
+<div class="overlay" id="txOv">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="txTitle">Операция</div>
+    <div class="type-row" id="txTypeRow">
+      <button class="type-btn a-inc" id="btnInc" onclick="setTT('income')">+ Доход</button>
+      <button class="type-btn" id="btnExp" onclick="setTT('expense')">— Расход</button>
+    </div>
+    <div class="fg"><label class="fl">Название</label><input class="fi" id="txName" placeholder="Например: Зарплата"></div>
+    <div class="fg">
+      <label class="fl">Сумма</label>
+      <div class="input-with-cur">
+        <input class="fi" id="txAmt" type="number" step="0.01" placeholder="0.00" oninput="onTxAmtChange()">
+        <select class="cur-sel-inline" id="txCur" onchange="onTxAmtChange()">
+          <option value="ZL">ZL</option>
+          <option value="USD">USD</option>
+          <option value="EUR">EUR</option>
+          <option value="BYN">BYN</option>
+          <option value="UAH">UAH</option>
+        </select>
+      </div>
+      <div class="converted-hint" id="txConvertHint"></div>
+    </div>
+    <div class="fg"><label class="fl">Число месяца</label><input class="fi" id="txDay" type="text" placeholder="25-е"></div>
+    <div class="fg" id="txCatG"><label class="fl">Категория</label>
+      <select class="fi" id="txCat">
+        <option>КВАРТИРА</option><option>ШКОЛА И КРУЖКИ</option><option>ПРОДУКТЫ / ПОКУПКИ</option>
+        <option>DIGITAL</option><option>БЫТ. ХИМИЯ И ХОЗ.</option><option>ЛИЧНОСТНОЕ РАЗВИТИЕ</option>
+        <option>КРАСОТА И ОТДЫХ</option><option>МАШИНА</option><option>НАЛОГИ РБ</option>
+        <option>НАЛОГИ ПОЛЬША</option><option>РАЗНЫЕ РАСХОДЫ</option><option>КРЕДИТЫ</option>
+        <option>СТРАХОВКИ ТЕХНИКИ</option><option>ДОЛГИ</option>
+      </select>
+    </div>
+    <div class="fg"><label class="fl">Примечание</label><input class="fi" id="txNote" placeholder="Необязательно"></div>
+    <input type="hidden" id="txEditId">
+    <button class="sub-btn" onclick="saveTx()">Сохранить</button>
+    <button class="cancel-btn" onclick="closeOv('txOv')">Отмена</button>
+  </div>
+</div>
+
+<div class="overlay" id="savOv">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Накопление</div>
+    <div class="fg"><label class="fl">Название</label><input class="fi" id="sName" placeholder="USD, Подушка..."></div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Сумма (ZL)</label><input class="fi" id="sZl" type="number" step="0.01" placeholder="0"></div>
+      <div class="fg"><label class="fl">Сумма ($)</label><input class="fi" id="sUsd" type="number" step="0.01" placeholder="0"></div>
+    </div>
+    <input type="hidden" id="sEditId">
+    <button class="sub-btn" onclick="saveSav()">Сохранить</button>
+    <button class="cancel-btn" onclick="closeOv('savOv')">Отмена</button>
+  </div>
+</div>
+
+<div class="overlay" id="debtOv">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Долг</div>
+    <div class="fg"><label class="fl">Название</label><input class="fi" id="dName" placeholder="Название долга"></div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Сумма (ZL)</label><input class="fi" id="dZl" type="number" step="0.01" placeholder="0"></div>
+      <div class="fg"><label class="fl">Сумма ($)</label><input class="fi" id="dUsd" type="number" step="0.01" placeholder="0"></div>
+    </div>
+    <div class="fg"><label class="fl">Дата</label><input class="fi" id="dDate" placeholder="01.2026"></div>
+    <input type="hidden" id="dEditId">
+    <button class="sub-btn" onclick="saveDebt()">Сохранить</button>
+    <button class="cancel-btn" onclick="closeOv('debtOv')">Отмена</button>
+  </div>
+</div>
+
+<div class="overlay" id="goalOv">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Новая цель</div>
+    <div class="frow">
+      <div class="fg" style="flex:0 0 64px"><label class="fl">Иконка</label><input class="fi" id="gEm" placeholder="🎯" style="text-align:center;font-size:20px"></div>
+      <div class="fg"><label class="fl">Название</label><input class="fi" id="gName" placeholder="Подушка безопасности"></div>
+    </div>
+    <div class="fg"><label class="fl">Тип</label>
+      <select class="fi" id="gType" onchange="toggleGF()">
+        <option value="financial">💰 Финансовая</option>
+        <option value="habit">🔄 Привычка (N дней)</option>
+        <option value="sport">💪 Спорт</option>
+        <option value="health">❤️ Здоровье</option>
+      </select>
+    </div>
+    <div id="gFinF"><div class="frow">
+      <div class="fg"><label class="fl">Цель (ZL)</label><input class="fi" id="gTarget" type="number" placeholder="50000"></div>
+      <div class="fg"><label class="fl">Накоплено</label><input class="fi" id="gSaved" type="number" placeholder="0"></div>
+    </div></div>
+    <div id="gHabF" style="display:none"><div class="frow">
+      <div class="fg"><label class="fl">Цель (дней)</label><input class="fi" id="gDays" type="number" placeholder="30"></div>
+      <div class="fg"><label class="fl">Прогресс</label><input class="fi" id="gProg" type="number" placeholder="0"></div>
+    </div></div>
+    <div class="fg"><label class="fl">Описание</label><input class="fi" id="gDesc" placeholder="Не есть сахар 30 дней"></div>
+    <button class="sub-btn" onclick="saveGoal()">Создать цель</button>
+    <button class="cancel-btn" onclick="closeOv('goalOv')">Отмена</button>
+  </div>
+</div>
+
+<div class="overlay" id="taskOv">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Новая задача</div>
+    <div class="fg"><label class="fl">Задача</label><input class="fi" id="tkTxt" placeholder="Что нужно сделать?"></div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Тег</label>
+        <select class="fi" id="tkTag">
+          <option value="personal">🌱 Личное</option><option value="finance">💜 Финансы</option>
+          <option value="work">💼 Работа</option><option value="urgent">🔥 Срочно</option>
+        </select>
+      </div>
+      <div class="fg"><label class="fl">Дедлайн</label><input class="fi" id="tkDue" type="date"></div>
+    </div>
+    <button class="sub-btn" onclick="saveTask()">Добавить</button>
+    <button class="cancel-btn" onclick="closeOv('taskOv')">Отмена</button>
+  </div>
+</div>
+
+<div class="overlay" id="rateOv">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">💱 Курсы валют к ZL</div>
+    <div style="font-size:12px;color:var(--t2);margin-bottom:14px">Обновляй раз в неделю по Wise или НБ Польши</div>
+    <div id="rateFields"></div>
+    <button class="sub-btn" onclick="saveRates()">Сохранить курсы</button>
+    <button class="cancel-btn" onclick="closeOv('rateOv')">Отмена</button>
+  </div>
+</div>
+
+<div class="overlay" id="settingsOv">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">⚙️ Настройки</div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <button class="sub-btn" style="background:var(--card2);border:1px solid var(--border2);color:var(--t2)" onclick="startChangePin()">🔐 Сменить PIN-код</button>
+      
+      <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r12);padding:12px">
+        <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">💾 Резервная копия</div>
+        <div style="font-size:11px;color:var(--t3);margin-bottom:10px;line-height:1.6">Скачай все данные в JSON файл. Храни как резервную копию — можно восстановить в любой момент.</div>
+        <button class="sub-btn" style="background:var(--gdim);border:1px solid rgba(0,201,122,0.3);color:var(--g);margin-top:0" onclick="downloadBackup()">⬇️ Скачать бэкап (JSON)</button>
+      </div>
+
+      <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r12);padding:12px">
+        <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">📂 Восстановление</div>
+        <div style="font-size:11px;color:var(--t3);margin-bottom:10px;line-height:1.6">⚠️ Загрузка бэкапа заменит все текущие данные в базе. Сначала сделай бэкап текущих данных!</div>
+        <label style="display:block;width:100%;padding:12px;background:var(--rdim);border:1px solid rgba(255,64,96,0.3);border-radius:var(--r12);color:var(--r);font-size:13px;font-weight:700;text-align:center;cursor:pointer">
+          ⬆️ Загрузить бэкап
+          <input type="file" accept=".json" style="display:none" onchange="restoreBackup(event)">
+        </label>
+      </div>
+
+      <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r12);padding:12px">
+        <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">О приложении</div>
+        <div style="font-size:12px;color:var(--t2);line-height:1.8">
+          <div>📦 Данные: Supabase (облако)</div>
+          <div>🔐 PIN: SHA-256 хэш в базе</div>
+          <div>💱 Валюты: ручные курсы</div>
+          <div>🌐 Работает на всех устройствах</div>
+          <div>⏰ Открывай раз в 7 дней чтобы база не засыпала</div>
+        </div>
+      </div>
+
+      <button class="cancel-btn" onclick="closeOv('settingsOv')">Закрыть</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════════════
+// SUPABASE CONFIG
+// ════════════════════════════════════════════════════
+const SB_URL = 'https://xhhcclmwdxkkrrbqlkze.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhoaGNjbG13ZHhra3JyYnFsa3plIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0NzE1MjgsImV4cCI6MjA5MDA0NzUyOH0.7Eyt-poMCD40psl96EPZ6U1Vo1i_JPv7pg1L5muvWcw';
+const HEADERS = { 'Content-Type': 'application/json', 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY };
+
+async function sbGet(table, params='') {
+  const r = await fetch(`${SB_URL}/rest/v1/${table}?${params}`, { headers: HEADERS });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+async function sbPost(table, data) {
+  const r = await fetch(`${SB_URL}/rest/v1/${table}`, { method:'POST', headers:{...HEADERS,'Prefer':'return=representation'}, body:JSON.stringify(data) });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+async function sbPatch(table, id, data) {
+  const r = await fetch(`${SB_URL}/rest/v1/${table}?id=eq.${id}`, { method:'PATCH', headers:{...HEADERS,'Prefer':'return=representation'}, body:JSON.stringify(data) });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+async function sbDelete(table, id) {
+  const r = await fetch(`${SB_URL}/rest/v1/${table}?id=eq.${id}`, { method:'DELETE', headers: HEADERS });
+  if (!r.ok) throw new Error(await r.text());
+}
+
+// ════════════════════════════════════════════════════
+// STATE (local cache)
+// ════════════════════════════════════════════════════
+const SK = 'flp_sb_v1';
+let PIN_HASH = null; // SHA-256 hash stored in Supabase
+let transactions = [], savings = [], debts = [], goals = [], tasks = [];
+let currencies = { USD:3.60, EUR:3.90, BYN:1.25, UAH:0.08 };
+let points = parseInt(localStorage.getItem('flp_pts')||'0');
+let _ach = JSON.parse(localStorage.getItem('flp_ach')||'{}');
+let selM = 3, selY = 2026;
+let syncPending = false;
+
+function setSyncStatus(s) {
+  const d = document.getElementById('syncDot');
+  d.className = 'sync-dot' + (s==='syncing'?' syncing':s==='error'?' error':'');
+}
+
+// ════════════════════════════════════════════════════
+// INIT — load from Supabase
+// ════════════════════════════════════════════════════
+async function initApp() {
+  document.getElementById('loadText').textContent = 'Загрузка данных...';
+  try {
+    setSyncStatus('syncing');
+    [transactions, savings, debts, goals, tasks] = await Promise.all([
+      sbGet('transactions', 'order=created_at.desc'),
+      sbGet('savings', 'order=created_at.asc'),
+      sbGet('debts', 'order=created_at.asc'),
+      sbGet('goals', 'order=created_at.asc'),
+      sbGet('tasks', 'order=created_at.desc'),
+    ]);
+    // Load currency rates
+    const rates = await sbGet('currencies');
+    rates.forEach(r => { currencies[r.code] = parseFloat(r.rate); });
+    // Load PIN hash from Supabase
+    const pinSetting = await sbGet('settings', 'key=eq.pin_hash');
+    PIN_HASH = pinSetting.length ? pinSetting[0].value : null;
+    setSyncStatus('ok');
+    document.getElementById('loadScreen').style.display = 'none';
+    initPin();
+  } catch(e) {
+    console.error(e);
+    setSyncStatus('error');
+    document.getElementById('loadText').textContent = '⚠️ Ошибка подключения. Проверь интернет.';
+    setTimeout(initApp, 3000);
+  }
+}
+
+// ════════════════════════════════════════════════════
+// MONTH SELECTORS
+// ════════════════════════════════════════════════════
+const MNS=['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+function initSel(){
+  const ms=document.getElementById('mSel'), ys=document.getElementById('ySel');
+  MNS.forEach((m,i)=>{ const o=document.createElement('option'); o.value=i; o.textContent=m; if(i===selM)o.selected=true; ms.appendChild(o); });
+  for(let y=2024;y<=2028;y++){ const o=document.createElement('option'); o.value=y; o.textContent=y; if(y===selY)o.selected=true; ys.appendChild(o); }
+}
+function onMC(){ selM=parseInt(document.getElementById('mSel').value); selY=parseInt(document.getElementById('ySel').value); renderAll(); }
+
+// ════════════════════════════════════════════════════
+// PIN — SHA-256 + Supabase
+// ════════════════════════════════════════════════════
+let pBuf='', pStep=0, pFirst='';
+// 0=enter, 1=create first, 2=confirm, 3=change-old, 4=change-new, 5=change-confirm
+
+async function sha256(str){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+async function savePinHash(hash){
+  const existing = await sbGet('settings','key=eq.pin_hash');
+  if(existing.length) await sbPatch('settings','pin_hash',{value:hash,updated_at:new Date().toISOString()});
+  else await sbPost('settings',{key:'pin_hash',value:hash});
+  PIN_HASH = hash;
+}
+
+function initPin(){
+  document.getElementById('loadScreen').style.display='none';
+  if(!PIN_HASH){ pStep=1; document.getElementById('pinSub').textContent='Создай PIN-код'; document.getElementById('pinSetup').style.display='block'; document.getElementById('pinSetup').textContent='Выбери 4-значный PIN для защиты'; }
+  else { pStep=0; document.getElementById('pinSub').textContent='Введи PIN для входа'; document.getElementById('pinSetup').style.display='none'; }
+  document.getElementById('pinScreen').style.display='flex';
+}
+function pp(d){ if(pBuf.length>=4)return; pBuf+=d; updDots(); if(pBuf.length===4)setTimeout(handlePin,120); }
+function pd(){ pBuf=pBuf.slice(0,-1); updDots(); }
+function updDots(cls=''){ for(let i=0;i<4;i++){ const d=document.getElementById('pd'+i); d.className='pin-dot'; if(cls)d.classList.add(cls); else if(i<pBuf.length)d.classList.add('filled'); } }
+
+async function handlePin(){
+  if(pStep===1){ pFirst=pBuf; pBuf=''; pStep=2; document.getElementById('pinSub').textContent='Подтверди PIN'; document.getElementById('pinSetup').textContent='Введи тот же код ещё раз'; updDots(); }
+  else if(pStep===2){
+    if(pBuf===pFirst){
+      try{
+        document.getElementById('pinHint').textContent='Сохранение...';
+        const hash = await sha256(pBuf);
+        await savePinHash(hash);
+        unlockApp();
+      }catch(e){ pinErr('Ошибка сохранения, проверь интернет'); pStep=1; pFirst=''; pBuf=''; document.getElementById('pinSub').textContent='Создай PIN-код'; }
+    } else { pinErr('Коды не совпадают'); pStep=1; pFirst=''; pBuf=''; document.getElementById('pinSub').textContent='Создай PIN-код'; document.getElementById('pinSetup').textContent='Попробуй снова'; }
+  }
+  else if(pStep===3){
+    // Change PIN — verify old
+    const hash = await sha256(pBuf);
+    if(hash===PIN_HASH){ pFirst=''; pBuf=''; pStep=4; document.getElementById('pinSub').textContent='Введи новый PIN'; updDots(); }
+    else { pinErr('Неверный PIN'); pBuf=''; }
+  }
+  else if(pStep===4){ pFirst=pBuf; pBuf=''; pStep=5; document.getElementById('pinSub').textContent='Подтверди новый PIN'; updDots(); }
+  else if(pStep===5){
+    if(pBuf===pFirst){
+      try{
+        const hash = await sha256(pBuf);
+        await savePinHash(hash);
+        closeOv('pinChangeOv'); pStep=0; toast('🔐 PIN изменён!');
+      }catch(e){ pinErr('Ошибка сохранения'); }
+    } else { pinErr('Коды не совпадают'); pStep=4; pFirst=''; pBuf=''; document.getElementById('pinSub').textContent='Введи новый PIN'; }
+  }
+  else {
+    // Normal login
+    const hash = await sha256(pBuf);
+    if(hash===PIN_HASH) unlockApp();
+    else { pinErr('Неверный PIN'); pBuf=''; }
+  }
+}
+function pinErr(msg){ updDots('error'); const d=document.getElementById('pinDots'); d.classList.add('shake'); document.getElementById('pinHint').textContent=msg; setTimeout(()=>{ d.classList.remove('shake'); updDots(); pBuf=''; },500); }
+function unlockApp(){ document.getElementById('pinScreen').style.display='none'; document.getElementById('app').classList.add('on'); initSel(); renderAll(); }
+function lockApp(){ document.getElementById('app').classList.remove('on'); document.getElementById('pinScreen').style.display='flex'; pBuf=''; pStep=0; document.getElementById('pinSub').textContent='Введи PIN для входа'; document.getElementById('pinSetup').style.display='none'; document.getElementById('pinHint').textContent=''; updDots(); }
+function startChangePin(){ closeOv('settingsOv'); pBuf=''; pStep=3; document.getElementById('pinSub').textContent='Введи текущий PIN'; document.getElementById('pinSetup').style.display='block'; document.getElementById('pinSetup').textContent='Для смены PIN сначала подтверди старый'; document.getElementById('pinHint').textContent=''; updDots(); document.getElementById('pinScreen').style.display='flex'; document.getElementById('app').classList.remove('on'); }
+
+// ════════════════════════════════════════════════════
+// NAV
+// ════════════════════════════════════════════════════
+let curTab='home';
+function sw(tab){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nb').forEach(b=>b.classList.remove('active'));
+  document.getElementById('sc-'+tab).classList.add('active');
+  const nb=document.getElementById('nb-'+tab); if(nb) nb.classList.add('active');
+  curTab=tab;
+  if(tab==='home') renderHome();
+  if(tab==='payments') renderPayments();
+  if(tab==='savings') renderSavings();
+  if(tab==='goals') renderGoals();
+  if(tab==='tasks') renderTasks();
+  if(tab==='stats') renderStats();
+  if(tab==='converter') renderConverter();
+}
+
+// ════════════════════════════════════════════════════
+// OVERLAYS
+// ════════════════════════════════════════════════════
+function openOv(id){ document.getElementById(id).classList.add('open'); }
+function closeOv(id){ document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.overlay').forEach(o=>{ o.addEventListener('click',e=>{ if(e.target===o) o.classList.remove('open'); }); });
+
+// ════════════════════════════════════════════════════
+// CURRENCY HELPERS
+// ════════════════════════════════════════════════════
+function toZL(amount, cur) {
+  if(cur==='ZL') return amount;
+  return amount * (currencies[cur] || 1);
+}
+function fromZL(amount, cur) {
+  if(cur==='ZL') return amount;
+  return amount / (currencies[cur] || 1);
+}
+function onTxAmtChange() {
+  const amt = parseFloat(document.getElementById('txAmt').value)||0;
+  const cur = document.getElementById('txCur').value;
+  const hint = document.getElementById('txConvertHint');
+  if(cur !== 'ZL' && amt > 0) {
+    const zl = toZL(amt, cur);
+    hint.textContent = `≈ ${fmt(zl)} ZL (курс: 1 ${cur} = ${currencies[cur]} ZL)`;
+  } else {
+    hint.textContent = '';
+  }
+}
+function calcCvt() {
+  const amt = parseFloat(document.getElementById('cvtAmt').value)||0;
+  const from = document.getElementById('cvtFrom').value;
+  const to = document.getElementById('cvtTo').value;
+  if(!amt) { document.getElementById('cvtResult').textContent='—'; document.getElementById('cvtResultLbl').textContent='Введи сумму'; return; }
+  const inZL = toZL(amt, from);
+  const result = to==='ZL' ? inZL : fromZL(inZL, to);
+  document.getElementById('cvtResult').textContent = fmt2(result) + ' ' + to;
+  document.getElementById('cvtResultLbl').textContent = `${fmt2(amt)} ${from} = ${fmt2(result)} ${to}`;
+}
+function calcQuick() {
+  const amt = parseFloat(document.getElementById('quickAmt').value)||0;
+  const cur = document.getElementById('quickCur').value;
+  const zl = toZL(amt, cur);
+  document.getElementById('quickZl').textContent = amt > 0 ? fmt(zl)+' ZL' : '—';
+}
+function addFromConverter() {
+  const amt = parseFloat(document.getElementById('quickAmt').value)||0;
+  const cur = document.getElementById('quickCur').value;
+  if(!amt){ toast('⚠️ Введи сумму'); return; }
+  const zl = toZL(amt, cur);
+  document.getElementById('txAmt').value = fmt2(zl);
+  document.getElementById('txCur').value = 'ZL';
+  document.getElementById('txNote').value = `${fmt2(amt)} ${cur} по курсу ${currencies[cur]}`;
+  setTT('expense');
+  closeOv('rateOv'); sw('home'); openOv('txOv');
+}
+function renderConverter() {
+  // Rates grid
+  const rg = document.getElementById('ratesGrid');
+  const symbols = { USD:'$', EUR:'€', BYN:'р.', UAH:'₴' };
+  rg.innerHTML = Object.entries(currencies).map(([code, rate])=>`
+    <div class="cvt-rate-item">
+      <div><div class="cvt-rate-code">${code} ${symbols[code]||''}</div><div style="font-size:9px;color:var(--t3)">1 ${code} =</div></div>
+      <div class="cvt-rate-val">${rate} ZL</div>
+    </div>`).join('');
+  calcCvt(); calcQuick();
+}
+function openRateModal() {
+  const symbols={USD:'$',EUR:'€',BYN:'р.',UAH:'₴'};
+  document.getElementById('rateFields').innerHTML = Object.entries(currencies).map(([code,rate])=>`
+    <div class="fg"><label class="fl">${code} ${symbols[code]||''} → ZL</label>
+    <input class="fi" id="rate_${code}" type="number" step="0.001" value="${rate}" placeholder="${rate}"></div>`).join('');
+  openOv('rateOv');
+}
+async function saveRates() {
+  setSyncStatus('syncing');
+  try {
+    for(const code of Object.keys(currencies)){
+      const val = parseFloat(document.getElementById('rate_'+code)?.value)||currencies[code];
+      currencies[code] = val;
+      const existing = await sbGet('currencies', `code=eq.${code}`);
+      if(existing.length) await sbPatch('currencies', existing[0].id, {rate:val, updated_at:new Date().toISOString()});
+      else await sbPost('currencies', {code, rate:val});
+    }
+    setSyncStatus('ok'); closeOv('rateOv'); toast('💱 Курсы обновлены!'); renderConverter();
+  } catch(e){ setSyncStatus('error'); toast('❌ Ошибка сохранения'); }
+}
+
+// ════════════════════════════════════════════════════
+// TRANSACTIONS
+// ════════════════════════════════════════════════════
+let txType='income', editTxId=null;
+function openTx(type){ editTxId=null; txType=type; setTT(type); ['txName','txNote'].forEach(id=>document.getElementById(id).value=''); document.getElementById('txAmt').value=''; document.getElementById('txDay').value=''; document.getElementById('txCur').value='ZL'; document.getElementById('txConvertHint').textContent=''; document.getElementById('txEditId').value=''; openOv('txOv'); }
+function editTx(id){
+  const t=transactions.find(x=>x.id===id); if(!t) return;
+  editTxId=id; txType=t.type; setTT(txType);
+  document.getElementById('txName').value=t.name; document.getElementById('txAmt').value=t.amount; document.getElementById('txDay').value=t.day||''; document.getElementById('txNote').value=t.note||''; document.getElementById('txEditId').value=id; document.getElementById('txCur').value='ZL'; document.getElementById('txConvertHint').textContent='';
+  if(t.cat) document.getElementById('txCat').value=t.cat;
+  openOv('txOv');
+}
+function setTT(t){ txType=t; document.getElementById('btnInc').className=t==='income'?'type-btn a-inc':'type-btn'; document.getElementById('btnExp').className=t==='expense'?'type-btn a-exp':'type-btn'; document.getElementById('txCatG').style.display=t==='expense'?'block':'none'; document.getElementById('txTitle').textContent=t==='income'?'Доход':'Расход'; }
+async function saveTx(){
+  const name=document.getElementById('txName').value.trim(); if(!name){toast('⚠️ Введи название');return;}
+  const rawAmt=parseFloat(document.getElementById('txAmt').value)||0;
+  const cur=document.getElementById('txCur').value;
+  const amount=toZL(rawAmt, cur);
+  const day=document.getElementById('txDay').value.trim()||'-';
+  const note=document.getElementById('txNote').value.trim()+(cur!=='ZL'?` (${fmt2(rawAmt)} ${cur})`:'');
+  const cat=document.getElementById('txCat').value;
+  const eid=document.getElementById('txEditId').value;
+  setSyncStatus('syncing');
+  try {
+    if(eid){
+      const updated=await sbPatch('transactions',parseInt(eid),{name,amount,day,note,cat});
+      const idx=transactions.findIndex(x=>x.id===parseInt(eid)); if(idx>=0) transactions[idx]={...transactions[idx],...updated[0]};
+    } else {
+      const rec={type:txType,name,amount,day,cat:txType==='income'?'income':cat,note,paid:txType==='income',month:selM,year:selY,usd:cur==='USD'?rawAmt:0};
+      const created=await sbPost('transactions',rec);
+      transactions.unshift(created[0]);
+      points+=txType==='income'?3:5; localStorage.setItem('flp_pts',points); checkAch();
+    }
+    setSyncStatus('ok'); closeOv('txOv'); toast(txType==='income'?'💚 Доход добавлен':'🔴 Расход добавлен'); renderAll();
+  } catch(e){ setSyncStatus('error'); toast('❌ Ошибка: '+e.message); }
+}
+async function delTx(id){
+  setSyncStatus('syncing');
+  try { await sbDelete('transactions',id); transactions=transactions.filter(x=>x.id!==id); setSyncStatus('ok'); renderAll(); toast('🗑️ Удалено'); }
+  catch(e){ setSyncStatus('error'); toast('❌ Ошибка удаления'); }
+}
+async function togglePaid(id){
+  const t=transactions.find(x=>x.id===id); if(!t) return;
+  const newPaid=!t.paid;
+  setSyncStatus('syncing');
+  try { await sbPatch('transactions',id,{paid:newPaid}); t.paid=newPaid; setSyncStatus('ok'); renderPayments(); if(curTab==='home') renderHome(); }
+  catch(e){ setSyncStatus('error'); }
+}
+
+// ════════════════════════════════════════════════════
+// SAVINGS & DEBTS
+// ════════════════════════════════════════════════════
+async function saveSav(){
+  const name=document.getElementById('sName').value.trim(); if(!name){toast('⚠️ Введи название');return;}
+  const amtZl=parseFloat(document.getElementById('sZl').value)||0, amtUsd=parseFloat(document.getElementById('sUsd').value)||0;
+  const eid=document.getElementById('sEditId').value;
+  setSyncStatus('syncing');
+  try {
+    if(eid){ const u=await sbPatch('savings',parseInt(eid),{name,amt_zl:amtZl,amt_usd:amtUsd}); const i=savings.findIndex(x=>x.id===parseInt(eid)); if(i>=0)savings[i]={...savings[i],...u[0]}; }
+    else { const c=await sbPost('savings',{name,amt_zl:amtZl,amt_usd:amtUsd}); savings.push(c[0]); points+=4; localStorage.setItem('flp_pts',points); checkAch(); }
+    setSyncStatus('ok'); closeOv('savOv'); toast('⭐ Сохранено'); renderSavings(); renderHome();
+  } catch(e){ setSyncStatus('error'); toast('❌ Ошибка'); }
+}
+function editSav(id){ const s=savings.find(x=>x.id===id); if(!s)return; document.getElementById('sName').value=s.name; document.getElementById('sZl').value=s.amt_zl; document.getElementById('sUsd').value=s.amt_usd; document.getElementById('sEditId').value=id; openOv('savOv'); }
+async function delSav(id){ try{ await sbDelete('savings',id); savings=savings.filter(x=>x.id!==id); renderSavings(); toast('🗑️ Удалено'); }catch(e){ toast('❌ Ошибка'); } }
+async function saveDebt(){
+  const name=document.getElementById('dName').value.trim(); if(!name){toast('⚠️ Введи название');return;}
+  const amtZl=parseFloat(document.getElementById('dZl').value)||0, amtUsd=parseFloat(document.getElementById('dUsd').value)||0, date=document.getElementById('dDate').value.trim();
+  const eid=document.getElementById('dEditId').value;
+  try {
+    if(eid){ const u=await sbPatch('debts',parseInt(eid),{name,amt_zl:amtZl,amt_usd:amtUsd,date}); const i=debts.findIndex(x=>x.id===parseInt(eid)); if(i>=0)debts[i]={...debts[i],...u[0]}; }
+    else { const c=await sbPost('debts',{name,amt_zl:amtZl,amt_usd:amtUsd,date}); debts.push(c[0]); }
+    closeOv('debtOv'); toast('💳 Долг сохранён'); renderSavings();
+  } catch(e){ toast('❌ Ошибка'); }
+}
+function editDebt(id){ const d=debts.find(x=>x.id===id); if(!d)return; document.getElementById('dName').value=d.name; document.getElementById('dZl').value=d.amt_zl; document.getElementById('dUsd').value=d.amt_usd; document.getElementById('dDate').value=d.date||''; document.getElementById('dEditId').value=id; openOv('debtOv'); }
+async function delDebt(id){ try{ await sbDelete('debts',id); debts=debts.filter(x=>x.id!==id); renderSavings(); toast('🗑️ Удалено'); }catch(e){ toast('❌ Ошибка'); } }
+
+// ════════════════════════════════════════════════════
+// GOALS
+// ════════════════════════════════════════════════════
+function toggleGF(){ const t=document.getElementById('gType').value; document.getElementById('gFinF').style.display=t==='financial'?'block':'none'; document.getElementById('gHabF').style.display=t!=='financial'?'block':'none'; }
+async function saveGoal(){
+  const name=document.getElementById('gName').value.trim(); if(!name){toast('⚠️ Введи название');return;}
+  const type=document.getElementById('gType').value;
+  const rec={emoji:document.getElementById('gEm').value.trim()||'🎯',name,type,description:document.getElementById('gDesc').value.trim(),streak:0,last_check:null};
+  if(type==='financial'){rec.target=parseFloat(document.getElementById('gTarget').value)||0;rec.saved=parseFloat(document.getElementById('gSaved').value)||0;}
+  else{rec.days=parseInt(document.getElementById('gDays').value)||30;rec.progress=parseInt(document.getElementById('gProg').value)||0;}
+  try{ const c=await sbPost('goals',rec); goals.push(c[0]); points+=10; localStorage.setItem('flp_pts',points); closeOv('goalOv'); toast('🎯 Цель создана! +10'); checkAch(); renderGoals(); }
+  catch(e){ toast('❌ Ошибка'); }
+}
+async function addToGoal(id){
+  const g=goals.find(x=>x.id===id); if(!g) return;
+  let upd={};
+  if(g.type==='financial'){ const a=parseFloat(prompt('Добавить ZL?')); if(!a||a<=0)return; upd.saved=Math.min((g.saved||0)+a,g.target); points+=8; toast(`+${fmt(a)} ZL!`); }
+  else {
+    const today=new Date().toDateString();
+    if(g.last_check===today){toast('✅ Уже отмечено сегодня');return;}
+    upd.streak=(g.last_check===new Date(Date.now()-86400000).toDateString())?(g.streak||0)+1:1;
+    upd.progress=(g.progress||0)+1; upd.last_check=today; points+=5; toast(`🔥 День ${upd.progress}! Streak: ${upd.streak}`);
+  }
+  try{ await sbPatch('goals',id,upd); Object.assign(g,upd); localStorage.setItem('flp_pts',points); checkAch(); renderGoals(); }
+  catch(e){ toast('❌ Ошибка'); }
+}
+async function delGoal(id){ try{ await sbDelete('goals',id); goals=goals.filter(x=>x.id!==id); renderGoals(); toast('🗑️ Удалено'); }catch(e){ toast('❌ Ошибка'); } }
+
+// ════════════════════════════════════════════════════
+// TASKS
+// ════════════════════════════════════════════════════
+let actTag='all';
+async function saveTask(){
+  const txt=document.getElementById('tkTxt').value.trim(); if(!txt){toast('⚠️ Введи текст');return;}
+  try{ const c=await sbPost('tasks',{text:txt,tag:document.getElementById('tkTag').value,due:document.getElementById('tkDue').value,done:false}); tasks.unshift(c[0]); points+=3; localStorage.setItem('flp_pts',points); closeOv('taskOv'); toast('📝 Добавлено'); checkAch(); renderTasks(); }
+  catch(e){ toast('❌ Ошибка'); }
+}
+async function toggleTask(id){ const t=tasks.find(x=>x.id===id); if(!t)return; const nd=!t.done; try{ await sbPatch('tasks',id,{done:nd}); t.done=nd; if(nd){points+=5;localStorage.setItem('flp_pts',points);toast('✅ +5 очков');} checkAch(); renderTasks(); updTaskDot(); }catch(e){ toast('❌ Ошибка'); } }
+async function delTask(id){ try{ await sbDelete('tasks',id); tasks=tasks.filter(x=>x.id!==id); renderTasks(); updTaskDot(); toast('🗑️ Удалено'); }catch(e){ toast('❌ Ошибка'); } }
+function updTaskDot(){ const w=document.getElementById('tNavWrap'),u=tasks.filter(t=>!t.done).length,e=w.querySelector('.nb-dot'); if(u>0&&!e){const d=document.createElement('div');d.className='nb-dot';w.appendChild(d);}else if(u===0&&e)e.remove(); }
+document.getElementById('tPills').addEventListener('click',e=>{ const p=e.target.closest('.pill');if(!p)return; document.querySelectorAll('#tPills .pill').forEach(x=>x.classList.remove('on')); p.classList.add('on'); actTag=p.dataset.tag; renderTasks(); });
+
+// ════════════════════════════════════════════════════
+// ACHIEVEMENTS
+// ════════════════════════════════════════════════════
+const ACHS=[
+  {id:'ftx',em:'🌟',nm:'Первая запись',pts:10,chk:()=>transactions.length>=1},
+  {id:'tx10',em:'📊',nm:'10 операций',pts:20,chk:()=>transactions.length>=10},
+  {id:'fg',em:'🎯',nm:'Первая цель',pts:15,chk:()=>goals.length>=1},
+  {id:'g50',em:'💪',nm:'Цель 50%',pts:25,chk:()=>goals.some(g=>g.type==='financial'&&g.target>0&&(g.saved||0)>=(g.target*0.5))},
+  {id:'gdone',em:'🏆',nm:'Цель выполнена',pts:50,chk:()=>goals.some(g=>g.type==='financial'&&g.target>0&&(g.saved||0)>=g.target)},
+  {id:'s7',em:'🔥',nm:'7 дней подряд',pts:30,chk:()=>goals.some(g=>(g.streak||0)>=7)},
+  {id:'ft',em:'✅',nm:'Первая задача',pts:5,chk:()=>tasks.length>=1},
+  {id:'t5',em:'🚀',nm:'5 задач готово',pts:20,chk:()=>tasks.filter(t=>t.done).length>=5},
+  {id:'sav1k',em:'💰',nm:'Накопил 1000 ZL',pts:30,chk:()=>savings.reduce((a,x)=>a+x.amt_zl,0)>=1000},
+  {id:'master',em:'👑',nm:'500 очков',pts:100,chk:()=>points>=400},
+];
+function checkAch(){ ACHS.forEach(a=>{ if(!_ach[a.id]&&a.chk()){_ach[a.id]=true;points+=a.pts;localStorage.setItem('flp_pts',points);localStorage.setItem('flp_ach',JSON.stringify(_ach));setTimeout(()=>toast(`🏆 ${a.nm}! +${a.pts}`),300);} }); }
+
+// ════════════════════════════════════════════════════
+// HELPERS
+// ════════════════════════════════════════════════════
+function fmt(n){ return new Intl.NumberFormat('ru-RU',{minimumFractionDigits:0,maximumFractionDigits:0}).format(n||0); }
+function fmt2(n){ return new Intl.NumberFormat('ru-RU',{minimumFractionDigits:0,maximumFractionDigits:2}).format(n||0); }
+function fmtD(s){ if(!s)return''; try{const d=new Date(s);return d.toLocaleDateString('ru-RU',{day:'numeric',month:'short'});}catch{return s;} }
+function toast(msg){ const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2500); }
+
+const CAT_CHIP={'КВАРТИРА':'c-kvart','ШКОЛА И КРУЖКИ':'c-school','ПРОДУКТЫ / ПОКУПКИ':'c-food','DIGITAL':'c-digital','БЫТ. ХИМИЯ И ХОЗ.':'c-chem','ЛИЧНОСТНОЕ РАЗВИТИЕ':'c-dev','КРАСОТА И ОТДЫХ':'c-beauty','МАШИНА':'c-car','НАЛОГИ РБ':'c-tax','НАЛОГИ ПОЛЬША':'c-tax','РАЗНЫЕ РАСХОДЫ':'c-misc','КРЕДИТЫ':'c-loan','СТРАХОВКИ ТЕХНИКИ':'c-ins','ДОЛГИ':'c-debt','income':'c-school'};
+const CAT_EM={'КВАРТИРА':'🏠','ШКОЛА И КРУЖКИ':'🏫','ПРОДУКТЫ / ПОКУПКИ':'🛒','DIGITAL':'💻','БЫТ. ХИМИЯ И ХОЗ.':'🧴','ЛИЧНОСТНОЕ РАЗВИТИЕ':'📚','КРАСОТА И ОТДЫХ':'💄','МАШИНА':'🚗','НАЛОГИ РБ':'🇧🇾','НАЛОГИ ПОЛЬША':'🇵🇱','РАЗНЫЕ РАСХОДЫ':'📦','КРЕДИТЫ':'💳','СТРАХОВКИ ТЕХНИКИ':'🛡️','ДОЛГИ':'💸','income':'💰'};
+
+function getTx(){ return transactions.filter(t=>t.month===selM&&t.year===selY); }
+function calcM(){
+  const tx=getTx();
+  const inc=tx.filter(t=>t.type==='income').reduce((s,x)=>s+parseFloat(x.amount),0);
+  const expPlan=tx.filter(t=>t.type==='expense').reduce((s,x)=>s+parseFloat(x.amount),0);
+  const expFact=tx.filter(t=>t.type==='expense'&&t.paid).reduce((s,x)=>s+parseFloat(x.amount),0);
+  const savZl=savings.reduce((s,x)=>s+parseFloat(x.amt_zl),0);
+  return{inc,expPlan,expFact,savZl,balPlan:inc-expPlan,balFact:inc-expFact};
+}
+function sboxHTML(c){
+  return [['Доходы',fmt(c.inc)+' ZL','var(--g)'],['Расходы (план)',fmt(c.expPlan)+' ZL',c.expPlan>c.inc?'var(--r)':'var(--t)'],['Расходы (факт)',fmt(c.expFact)+' ZL','var(--r)'],['Остаток (план)',fmt(c.balPlan)+' ZL',c.balPlan>=0?'var(--g)':'var(--r)'],['Остаток (факт)',fmt(c.balFact)+' ZL',c.balFact>=0?'var(--g)':'var(--r)']]
+    .map(([l,v,col],i)=>`<div class="srow${i>=3?' bold':''}"><span class="sl">${l}</span><span class="sv" style="color:${col}">${v}</span></div>`).join('');
+}
+
+// ════════════════════════════════════════════════════
+// RENDER
+// ════════════════════════════════════════════════════
+function renderHome(){
+  const c=calcM();
+  const ha=document.getElementById('hAmt'); ha.textContent=fmt(c.balFact)+' ZL'; ha.className='hero-amt '+(c.balFact>=0?'pos':'neg');
+  document.getElementById('hInc').textContent=fmt(c.inc)+' ZL';
+  document.getElementById('hExp').textContent=fmt(c.expFact)+' ZL';
+  document.getElementById('hSav').textContent=fmt(c.savZl)+' ZL';
+  document.getElementById('homeSbox').innerHTML=sboxHTML(c);
+  const tx=getTx().slice(0,6);
+  const rl=document.getElementById('homeRecent');
+  if(!tx.length){rl.innerHTML='<div class="empty"><div class="empty-em">💸</div><p>Нет операций за этот месяц</p></div>';return;}
+  rl.innerHTML=tx.map(t=>`<div style="display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--border)">
+    <div style="width:32px;height:32px;border-radius:9px;background:${t.type==='income'?'var(--gdim)':'var(--rdim)'};display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">${CAT_EM[t.cat]||'💰'}</div>
+    <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.name}</div><div style="font-size:10px;color:var(--t3)">${t.type==='income'?'Доход':t.cat} · ${t.day||'-'}</div></div>
+    <div class="amt ${t.type==='income'?'g':'r'}">${t.type==='income'?'+':'−'}${fmt(t.amount)}</div>
+    <button class="del-btn" onclick="delTx(${t.id})">✕</button>
+  </div>`).join('');
+}
+
+function renderPayments(){
+  const tx=getTx();
+  const incomes=tx.filter(t=>t.type==='income');
+  const exps=tx.filter(t=>t.type==='expense');
+  const incTotal=incomes.reduce((s,x)=>s+parseFloat(x.amount),0);
+  document.getElementById('incTotal').textContent=fmt(incTotal)+' ZL';
+  const it=document.getElementById('incTable');
+  if(!incomes.length){it.innerHTML='<div class="empty" style="padding:12px 0"><p>Нет доходов</p></div>';}
+  else{it.innerHTML=`<div class="tbl-wrap"><table class="tbl"><tr><th>Источник</th><th style="text-align:right">Сумма</th><th>Дата</th><th></th></tr>
+    ${incomes.map(t=>`<tr><td style="font-size:12px">${t.name}${t.note?`<div style="font-size:9px;color:var(--t3)">${t.note}</div>`:''}</td><td style="text-align:right"><span class="amt g">+${fmt(t.amount)}</span></td><td style="font-size:11px;color:var(--t3)">${t.day||'-'}</td><td style="white-space:nowrap"><button class="edit-btn" onclick="editTx(${t.id})">✏️</button><button class="del-btn" onclick="delTx(${t.id})">✕</button></td></tr>`).join('')}
+  </table></div>`;}
+  const cats=[...new Set(exps.map(e=>e.cat))];
+  const cont=document.getElementById('expByCat');
+  if(!exps.length){cont.innerHTML=`<div class="card"><div class="empty"><div class="empty-em">📋</div><p>Нет расходов</p></div></div>`;return;}
+  cont.innerHTML=cats.map(cat=>{
+    const rows=exps.filter(e=>e.cat===cat);
+    const total=rows.reduce((s,r)=>s+parseFloat(r.amount),0);
+    const paidTotal=rows.filter(r=>r.paid).reduce((s,r)=>s+parseFloat(r.amount),0);
+    const cc=CAT_CHIP[cat]||'c-misc';
+    return `<div class="card" style="margin-bottom:10px;padding:10px">
+      <div class="cat-hdr"><span class="chip ${cc}">${CAT_EM[cat]||'📦'} ${cat}</span><span class="cat-hdr-total">${fmt(paidTotal)}/${fmt(total)} ZL</span></div>
+      <div class="tbl-wrap"><table class="tbl"><tr><th>Название</th><th style="text-align:right">Сумма</th><th style="text-align:center">Дата</th><th style="text-align:center">✓</th><th></th></tr>
+        ${rows.map(t=>`<tr style="${t.paid?'':'opacity:0.75'}"><td style="font-size:11px;max-width:130px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.name}${t.note?`<div style="font-size:9px;color:var(--t3)">${t.note}</div>`:''}</td><td style="text-align:right"><span class="amt r">−${fmt(t.amount)}</span></td><td style="text-align:center;font-size:11px;color:var(--t3)">${t.day||'-'}</td><td style="text-align:center"><button class="paid-btn ${t.paid?'paid':'unpaid'}" onclick="togglePaid(${t.id})">${t.paid?'✓':'○'}</button></td><td style="white-space:nowrap"><button class="edit-btn" onclick="editTx(${t.id})">✏️</button><button class="del-btn" onclick="delTx(${t.id})">✕</button></td></tr>`).join('')}
+      </table></div></div>`;
+  }).join('');
+  document.getElementById('paySbox').innerHTML=sboxHTML(calcM());
+}
+
+function renderSavings(){
+  const tzl=savings.reduce((s,x)=>s+parseFloat(x.amt_zl),0);
+  const tusd=savings.reduce((s,x)=>s+parseFloat(x.amt_usd),0);
+  document.getElementById('savTotZl').textContent=fmt(tzl)+' ZL';
+  document.getElementById('savTotUsd').textContent='$'+fmt(tusd);
+  const sl=document.getElementById('savList');
+  sl.innerHTML=savings.length?savings.map(s=>`<div class="sav-row"><div><div class="sav-name">${s.name}</div>${s.amt_usd?`<div style="font-size:10px;color:var(--t3)">$${fmt(s.amt_usd)}</div>`:''}</div><div class="sav-right"><span class="sav-val">${fmt(s.amt_zl)} ZL</span><button class="edit-btn" onclick="editSav(${s.id})">✏️</button><button class="del-btn" onclick="delSav(${s.id})">✕</button></div></div>`).join(''):'<div class="empty"><div class="empty-em">⭐</div><p>Нет накоплений</p></div>';
+  const dl=document.getElementById('debtList');
+  const dtot=debts.reduce((s,x)=>s+parseFloat(x.amt_zl),0);
+  dl.innerHTML=debts.length?debts.map(d=>`<div class="sav-row"><div><div class="sav-name">${d.name}</div>${d.date?`<div style="font-size:10px;color:var(--t3)">${d.date}</div>`:''}</div><div class="sav-right"><div style="text-align:right">${d.amt_zl?`<div class="sav-val debt-val">${fmt(d.amt_zl)} ZL</div>`:''}${d.amt_usd?`<div style="font-size:11px;color:var(--r)">$${fmt(d.amt_usd)}</div>`:''}</div><button class="edit-btn" onclick="editDebt(${d.id})">✏️</button><button class="del-btn" onclick="delDebt(${d.id})">✕</button></div></div>`).join('')+`<div style="display:flex;justify-content:space-between;padding:9px 0 0;border-top:1px solid var(--border);margin-top:4px"><span style="font-size:11px;color:var(--t2);font-weight:700">ИТОГО ДОЛГИ</span><span class="sav-val debt-val">${fmt(dtot)} ZL</span></div>`:'<div class="empty"><div class="empty-em">💳</div><p>Нет долгов</p></div>';
+}
+
+function renderGoals(){
+  const pts=points, max=600, pct=Math.min(pts/max,1);
+  const lvls=[[0,'🌱 Начинающий'],[60,'📚 Копилка'],[150,'💡 Сберегатель'],[300,'🚀 Финансист'],[500,'👑 Мастер']];
+  let lvl=lvls[0][1]; for(const[p,l]of lvls)if(pts>=p)lvl=l;
+  document.getElementById('sNum').textContent=pts; document.getElementById('sLvl').textContent=lvl;
+  document.getElementById('sRing').style.strokeDashoffset=157-157*pct;
+  const gl=document.getElementById('goalsList');
+  if(!goals.length){gl.innerHTML='<div class="empty"><div class="empty-em">🎯</div><p>Поставь первую цель!</p></div>';}
+  else{gl.innerHTML=goals.map(g=>{
+    const isFin=g.type==='financial';
+    const p=isFin?(g.target?Math.round((g.saved||0)/g.target*100):0):(g.days?Math.round((g.progress||0)/g.days*100):0);
+    const col=p>=100?'var(--g)':p>=50?'var(--a2)':'var(--y)';
+    const tl={financial:'💰 Финансовая',habit:'🔄 Привычка',sport:'💪 Спорт',health:'❤️ Здоровье'}[g.type];
+    const tc={financial:'gt-fin',habit:'gt-habit',sport:'gt-sport',health:'gt-health'}[g.type];
+    return `<div class="goal-card"><div class="goal-head"><div style="display:flex;align-items:flex-start"><span class="g-em">${g.emoji}</span><div><div class="g-name">${g.name}</div><span class="g-type ${tc}">${tl}</span>${g.description?`<div style="font-size:11px;color:var(--t3);margin-top:2px">${g.description}</div>`:''}</div></div><div style="display:flex;align-items:center;gap:6px"><div class="g-pct">${p}%</div><button class="del-btn" onclick="delGoal(${g.id})">✕</button></div></div>
+    <div class="prog-bar"><div class="prog-fill" style="width:${Math.min(p,100)}%;background:${col}"></div></div>
+    <div class="g-meta">${isFin?`<span>Накоплено: <b style="color:var(--g)">${fmt(g.saved||0)} ZL</b></span><span>Осталось: ${fmt(Math.max(0,(g.target||0)-(g.saved||0)))} ZL</span>`:`<span>Прогресс: <b style="color:var(--b)">${g.progress||0}/${g.days||30} дней</b></span>`}</div>
+    ${(g.streak||0)>0?`<div class="g-streak">🔥 Streak: ${g.streak} дн. подряд</div>`:''}
+    <div class="g-actions"><button class="g-btn checkin" onclick="addToGoal(${g.id})">${isFin?'+ Пополнить':'✓ Отметить день'}</button></div></div>`;
+  }).join('');}
+  document.getElementById('achGrid').innerHTML=ACHS.map(a=>`<div class="ach ${_ach[a.id]?'got':''}"><div class="ach-em">${a.em}</div><div class="ach-nm">${a.nm}</div><div class="ach-pts">+${a.pts}</div></div>`).join('');
+}
+
+function renderTasks(){
+  const fil=actTag==='all'?tasks:tasks.filter(t=>t.tag===actTag);
+  document.getElementById('tTot').textContent=tasks.length;
+  document.getElementById('tDone').textContent=tasks.filter(t=>t.done).length;
+  const tl=document.getElementById('taskList');
+  if(!fil.length){tl.innerHTML='<div class="empty"><div class="empty-em">✅</div><p>Нет задач</p></div>';updTaskDot();return;}
+  const tCls={finance:'tt-fin',personal:'tt-personal',work:'tt-work',urgent:'tt-urgent'};
+  const tLbl={finance:'Финансы',personal:'Личное',work:'Работа',urgent:'Срочно'};
+  tl.innerHTML=[...fil.filter(t=>!t.done),...fil.filter(t=>t.done)].map(t=>`<div class="task-row ${t.done?'is-done':''}"><button class="t-chk ${t.done?'done':''}" onclick="toggleTask(${t.id})"></button><div class="t-body"><div class="t-txt">${t.text}</div><div class="t-meta"><span class="t-tag ${tCls[t.tag]||''}">${tLbl[t.tag]||t.tag}</span>${t.due?`<span class="t-due">📅 ${fmtD(t.due)}</span>`:''}</div></div><button class="del-btn" onclick="delTask(${t.id})">✕</button></div>`).join('');
+  updTaskDot();
+}
+
+function renderStats(){
+  const tx=getTx();
+  const inc=tx.filter(t=>t.type==='income').reduce((s,x)=>s+parseFloat(x.amount),0);
+  const exp=tx.filter(t=>t.type==='expense').reduce((s,x)=>s+parseFloat(x.amount),0);
+  document.getElementById('stInc').textContent=fmt(inc)+' ZL';
+  document.getElementById('stExp').textContent=fmt(exp)+' ZL';
+  const cats={};
+  tx.filter(t=>t.type==='expense').forEach(t=>{cats[t.cat]=(cats[t.cat]||0)+parseFloat(t.amount);});
+  const sorted=Object.entries(cats).sort((a,b)=>b[1]-a[1]);
+  const maxV=sorted[0]?.[1]||1;
+  document.getElementById('stCats').innerHTML=sorted.length?sorted.map(([c,v])=>`<div class="stat-row"><div class="stat-top"><span class="stat-name">${CAT_EM[c]||'📦'} ${c}</span><span class="stat-val-t">${fmt(v)} ZL</span></div><div class="prog-bar"><div class="prog-fill" style="width:${v/maxV*100}%;background:linear-gradient(to right,var(--r),#ff7090)"></div></div></div>`).join(''):'<div class="empty" style="padding:16px 0"><p>Нет данных</p></div>';
+  const top=[...tx].filter(t=>t.type==='expense').sort((a,b)=>b.amount-a.amount).slice(0,5);
+  document.getElementById('stTop').innerHTML=top.length?top.map(t=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)"><div><div style="font-size:12px;font-weight:500">${t.name}</div><div style="font-size:10px;color:var(--t3)">${t.cat}</div></div><span class="amt r">−${fmt(t.amount)}</span></div>`).join(''):'<div class="empty" style="padding:16px 0"><p>Нет данных</p></div>';
+}
+
+// ════════════════════════════════════════════════════
+// EXPORT
+// ════════════════════════════════════════════════════
+function exportCSV(){
+  const tx=getTx(); const mn=MNS[selM]+' '+selY;
+  let csv='\uFEFF';
+  csv+=`FinLife Pro — ${mn}\n\nДОХОДЫ\nИсточник,Сумма (ZL),Дата\n`;
+  tx.filter(t=>t.type==='income').forEach(t=>{csv+=`"${t.name}",${t.amount},"${t.day||''}"\n`;});
+  csv+=`\nРАСХОДЫ\nКатегория,Название,Сумма (ZL),Дата,Оплачено,Примечание\n`;
+  tx.filter(t=>t.type==='expense').sort((a,b)=>a.cat.localeCompare(b.cat)).forEach(t=>{csv+=`"${t.cat}","${t.name}",${t.amount},"${t.day||'-'}",${t.paid?'Да':'Нет'},"${t.note||''}"\n`;});
+  const c=calcM();
+  csv+=`\nСВОДКА\nПоказатель,ZL\nДоходы,${c.inc}\nРасходы (план),${c.expPlan}\nРасходы (факт),${c.expFact}\nОстаток (план),${c.balPlan}\nОстаток (факт),${c.balFact}\n`;
+  csv+=`\nКУРСЫ ВАЛЮТ\nВалюта,Курс к ZL\n`;
+  Object.entries(currencies).forEach(([c,r])=>{csv+=`${c},${r}\n`;});
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`FinLife_${MNS[selM]}_${selY}.csv`; a.click(); URL.revokeObjectURL(url);
+  toast('📊 Файл скачан!');
+}
+
+// ════════════════════════════════════════════════════
+// BACKUP & RESTORE
+// ════════════════════════════════════════════════════
+async function downloadBackup(){
+  toast('⏳ Подготовка бэкапа...');
+  try {
+    // Load everything fresh from Supabase
+    const [txAll, savAll, debtAll, goalAll, taskAll, curAll] = await Promise.all([
+      sbGet('transactions','order=created_at.asc'),
+      sbGet('savings','order=created_at.asc'),
+      sbGet('debts','order=created_at.asc'),
+      sbGet('goals','order=created_at.asc'),
+      sbGet('tasks','order=created_at.asc'),
+      sbGet('currencies'),
+    ]);
+    const backup = {
+      version: 2,
+      created_at: new Date().toISOString(),
+      app: 'FinLife Pro',
+      data: {
+        transactions: txAll,
+        savings: savAll,
+        debts: debtAll,
+        goals: goalAll,
+        tasks: taskAll,
+        currencies: curAll,
+      }
+    };
+    const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const date = new Date().toISOString().split('T')[0];
+    a.href = url; a.download = `FinLife_backup_${date}.json`; a.click();
+    URL.revokeObjectURL(url);
+    toast('✅ Бэкап скачан!');
+  } catch(e){ toast('❌ Ошибка создания бэкапа'); console.error(e); }
+}
+
+async function restoreBackup(event){
+  const file = event.target.files[0]; if(!file) return;
+  const confirmed = confirm(`⚠️ Восстановление заменит ВСЕ текущие данные в базе!\n\nФайл: ${file.name}\n\nПродолжить?`);
+  if(!confirmed){ event.target.value=''; return; }
+  toast('⏳ Восстановление данных...');
+  setSyncStatus('syncing');
+  try {
+    const text = await file.text();
+    const backup = JSON.parse(text);
+    if(!backup.data || !backup.version){ toast('❌ Неверный формат файла'); return; }
+    const { transactions:txB, savings:savB, debts:debtB, goals:goalB, tasks:taskB, currencies:curB } = backup.data;
+
+    // Delete all existing data
+    const delAll = async (table) => {
+      const existing = await sbGet(table);
+      await Promise.all(existing.map(r => sbDelete(table, r.id)));
+    };
+    await Promise.all([
+      delAll('transactions'), delAll('savings'), delAll('debts'),
+      delAll('goals'), delAll('tasks')
+    ]);
+
+    // Restore — strip IDs so Supabase generates new ones
+    const strip = arr => arr.map(({id, created_at, ...rest}) => rest);
+    const inserts = [];
+    if(txB?.length) inserts.push(...txB.map(r => sbPost('transactions', strip([r])[0])));
+    if(savB?.length) inserts.push(...savB.map(r => sbPost('savings', strip([r])[0])));
+    if(debtB?.length) inserts.push(...debtB.map(r => sbPost('debts', strip([r])[0])));
+    if(goalB?.length) inserts.push(...goalB.map(r => sbPost('goals', strip([r])[0])));
+    if(taskB?.length) inserts.push(...taskB.map(r => sbPost('tasks', strip([r])[0])));
+    await Promise.all(inserts);
+
+    // Restore currency rates
+    if(curB?.length){
+      for(const c of curB){
+        const existing = await sbGet('currencies',`code=eq.${c.code}`);
+        if(existing.length) await sbPatch('currencies', existing[0].id, {rate:c.rate});
+        else await sbPost('currencies', {code:c.code, rate:c.rate});
+        currencies[c.code] = parseFloat(c.rate);
+      }
+    }
+
+    // Reload fresh data into memory
+    [transactions, savings, debts, goals, tasks] = await Promise.all([
+      sbGet('transactions','order=created_at.desc'),
+      sbGet('savings','order=created_at.asc'),
+      sbGet('debts','order=created_at.asc'),
+      sbGet('goals','order=created_at.asc'),
+      sbGet('tasks','order=created_at.desc'),
+    ]);
+
+    setSyncStatus('ok');
+    closeOv('settingsOv');
+    renderAll();
+    toast('✅ Данные восстановлены!');
+  } catch(e){
+    setSyncStatus('error');
+    toast('❌ Ошибка восстановления');
+    console.error(e);
+  }
+  event.target.value='';
+}
+
+
+  if(curTab==='home') renderHome();
+  if(curTab==='payments') renderPayments();
+  if(curTab==='savings') renderSavings();
+  if(curTab==='goals') renderGoals();
+  if(curTab==='tasks') renderTasks();
+  if(curTab==='stats') renderStats();
+  if(curTab==='converter') renderConverter();
+  updTaskDot();
+}
+
+// ════════════════════════════════════════════════════
+// START
+// ════════════════════════════════════════════════════
+initApp();
+</script>
+</body>
+</html>
