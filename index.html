@@ -387,6 +387,10 @@ body{background:var(--bg);color:var(--t);font-family:'Manrope',sans-serif;font-s
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         Экспорт в Excel (CSV)
       </button>
+      <button class="exp-btn" onclick="copyToNextMonth()" style="border-color:rgba(91,110,245,0.4);color:var(--a2)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+        📋 Копировать в следующий месяц
+      </button>
     </div>
 
     <!-- CONVERTER -->
@@ -1374,6 +1378,66 @@ async function restoreBackup(event){
   }
   event.target.value='';
 }
+
+// ════════════════════════════════════════════════════
+// COPY TO NEXT MONTH
+// ════════════════════════════════════════════════════
+async function copyToNextMonth(){
+  const nextM = selM === 11 ? 0 : selM + 1;
+  const nextY = selM === 11 ? selY + 1 : selY;
+  const nextName = MNS[nextM] + ' ' + nextY;
+
+  // Check if next month already has data
+  const existing = await sbGet('transactions', `month=eq.${nextM}&year=eq.${nextY}`);
+  if(existing.length > 0){
+    const ok = confirm(`⚠️ В ${nextName} уже есть ${existing.length} записей.\n\nДобавить ещё? (существующие не удалятся)`);
+    if(!ok) return;
+  } else {
+    const ok = confirm(`📋 Скопировать все платежи текущего месяца в ${nextName}?\n\nВсе записи будут скопированы с paid = false (не оплачено).`);
+    if(!ok) return;
+  }
+
+  const txs = getTx();
+  if(!txs.length){ toast('⚠️ Нет данных для копирования'); return; }
+
+  setSyncStatus('syncing');
+  toast('⏳ Копирование...');
+
+  try {
+    // Copy all transactions to next month, reset paid status
+    const copies = txs.map(({id, created_at, ...rest}) => ({
+      ...rest,
+      month: nextM,
+      year: nextY,
+      paid: rest.type === 'income' ? true : false, // incomes mark as received, expenses as unpaid
+    }));
+
+    // Insert in batches of 20
+    for(let i = 0; i < copies.length; i += 20){
+      const batch = copies.slice(i, i + 20);
+      await Promise.all(batch.map(r => sbPost('transactions', r)));
+    }
+
+    // Reload transactions
+    transactions = await sbGet('transactions', 'order=created_at.desc');
+    setSyncStatus('ok');
+    toast(`✅ Скопировано ${copies.length} записей в ${nextName}!`);
+
+    // Ask if user wants to switch to next month
+    const sw = confirm(`Перейти в ${nextName}?`);
+    if(sw){
+      document.getElementById('mSel').value = nextM;
+      document.getElementById('ySel').value = nextY;
+      selM = nextM; selY = nextY;
+      renderAll();
+    }
+  } catch(e){
+    setSyncStatus('error');
+    toast('❌ Ошибка копирования: ' + e.message);
+    console.error(e);
+  }
+}
+
 
 function renderAll(){
   if(curTab==='home') renderHome();
