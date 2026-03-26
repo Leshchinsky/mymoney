@@ -292,7 +292,6 @@ body{background:var(--bg);color:var(--t);font-family:'Manrope',sans-serif;font-s
 .trend-down{color:var(--g)}
 .trend-same{color:var(--t3)}
 </style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 .overdue-row td{background:rgba(255,64,96,0.06)!important}
 .overdue-badge{display:inline-block;background:var(--rdim);color:var(--r);font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;margin-left:4px;letter-spacing:0.3px}
@@ -311,6 +310,7 @@ body{background:var(--bg);color:var(--t);font-family:'Manrope',sans-serif;font-s
 .empty-em{font-size:32px;margin-bottom:8px}
 .empty p{font-size:13px}
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -1100,10 +1100,12 @@ async function saveTx(){
   setSyncStatus('syncing');
   try {
     if(eid){
-      const updated=await sbPatch('transactions',parseInt(eid),{name,amount,day,note,cat});
+      var ownerVal=document.getElementById('txOwner').value||'family';
+      const updated=await sbPatch('transactions',parseInt(eid),{name,amount,day,note,cat,owner:ownerVal});
       const idx=transactions.findIndex(x=>x.id===parseInt(eid)); if(idx>=0) transactions[idx]={...transactions[idx],...updated[0]};
     } else {
-      const rec={type:txType,name,amount,day,cat:txType==='income'?'income':cat,note,paid:txType==='income',month:selM,year:selY,usd:cur==='USD'?rawAmt:0};
+      var ownerNew=document.getElementById('txOwner').value||'family';
+      const rec={type:txType,name,amount,day,cat:txType==='income'?'income':cat,note,paid:txType==='income',month:selM,year:selY,usd:cur==='USD'?rawAmt:0,owner:ownerNew};
       const created=await sbPost('transactions',rec);
       transactions.unshift(created[0]);
       points+=txType==='income'?3:5; localStorage.setItem('flp_pts',points); checkAch();
@@ -1350,9 +1352,9 @@ function renderPayments(){
   var ownerCol = OWNER_COLOR[t.owner||'family'];
   var ownerBadge = t.owner && t.owner !== 'family'
     ? '<span style="display:inline-block;font-size:8px;font-weight:700;padding:1px 5px;border-radius:3px;margin-left:4px;color:'+ownerCol+';background:'+OWNER_BG[t.owner||'family']+'">'+ownerLbl+'</span>'
-    : '';
+    : '<span style="display:inline-block;font-size:8px;font-weight:700;padding:1px 5px;border-radius:3px;margin-left:4px;color:var(--a2);background:rgba(91,110,245,0.1)">👫</span>';
   var note = t.note ? '<div style="font-size:9px;color:var(--t3)">'+t.note+'</div>' : '';
-      return '<tr><td style="font-size:12px">'+t.name+note+'</td>'
+      return '<tr><td style="font-size:12px">'+t.name+ownerBadge+note+'</td>'
         +'<td style="text-align:right"><span class="amt g">+'+fmt(t.amount)+'</span></td>'
         +'<td style="font-size:11px;color:var(--t3)">'+(t.day||'-')+'</td>'
         +'<td style="white-space:nowrap"><button class="edit-btn" onclick="editTx('+t.id+')">✏️</button>'
