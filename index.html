@@ -589,6 +589,18 @@ body{background:var(--bg);color:var(--t);font-family:'Manrope',sans-serif;font-s
       </div>
     </div>
 
+    <!-- P&L Screen -->
+    <div class="screen" id="sc-pnl">
+      <div style="margin-bottom:10px">
+        <div style="font-size:11px;color:var(--t3);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;font-weight:600">Общие расходы делятся поровну между Димой и Аленой</div>
+      </div>
+      <div id="pnlCards"></div>
+      <div class="card" style="margin-top:10px">
+        <div class="sec-title">Детали расчёта</div>
+        <div id="pnlDetails"></div>
+      </div>
+    </div>
+
   </div>
 
   <nav class="nav">
@@ -612,6 +624,9 @@ body{background:var(--bg);color:var(--t);font-family:'Manrope',sans-serif;font-s
     </button>
     <button class="nb" onclick="sw('stats')" id="nb-stats">
       <div class="nb-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div><span>Статистика</span>
+    </button>
+    <button class="nb" onclick="sw('pnl')" id="nb-pnl">
+      <div class="nb-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg></div><span>P&L</span>
     </button>
   </nav>
 </div>
@@ -968,6 +983,7 @@ function sw(tab){
   if(tab==='tasks') renderTasks();
   if(tab==='stats') renderStats();
   if(tab==='converter') renderConverter();
+  if(tab==='pnl') renderPnl();
 }
 
 // ════════════════════════════════════════════════════
@@ -1071,7 +1087,7 @@ function editTx(id){
   document.getElementById('txOwner').value = t.owner||'family';
   openOv('txOv');
 }
-function setTT(t){ txType=t; document.getElementById('btnInc').className=t==='income'?'type-btn a-inc':'type-btn'; document.getElementById('btnExp').className=t==='expense'?'type-btn a-exp':'type-btn'; document.getElementById('txCatG').style.display=t==='expense'?'block':'none'; document.getElementById('txTitle').textContent=t==='income'?'Доход':'Расход'; }
+function setTT(t){ txType=t; document.getElementById('btnInc').className=t==='income'?'type-btn a-inc':'type-btn'; document.getElementById('btnExp').className=t==='expense'?'type-btn a-exp':'type-btn'; document.getElementById('txCatG').style.display=t==='expense'?'block':'none'; document.getElementById('txTitle').textContent=t==='income'?'Доход':'Расход'; if(t==='income') document.getElementById('txOwner').value='dima'; }
 async function saveTx(){
   const name=document.getElementById('txName').value.trim(); if(!name){toast('⚠️ Введи название');return;}
   const rawAmt=parseFloat(document.getElementById('txAmt').value)||0;
@@ -1651,6 +1667,90 @@ function renderStats(){
   }).join('') : '<div class="empty" style="padding:16px 0"><p>Нет данных</p></div>';
 }
 
+function renderPnl(){
+  var tx = getTx();
+  var exps = tx.filter(function(t){return t.type==='expense';});
+  var incs = tx.filter(function(t){return t.type==='income';});
+
+  // Calculate income per owner
+  function incFor(o){
+    return incs.filter(function(t){return (t.owner||'dima')===o;}).reduce(function(s,t){return s+parseFloat(t.amount);},0);
+  }
+  // Calculate personal expenses per owner
+  function expPersonal(o){
+    return exps.filter(function(t){return (t.owner||'family')===o;}).reduce(function(s,t){return s+parseFloat(t.amount);},0);
+  }
+  // Total family expenses (shared)
+  var familyExp = exps.filter(function(t){return (t.owner||'family')==='family';}).reduce(function(s,t){return s+parseFloat(t.amount);},0);
+  var sashaExp = expPersonal('sasha');
+  // Sasha expenses are shared between Dima and Alena equally
+  var sharedPerPerson = (familyExp + sashaExp) / 2;
+
+  var people = [
+    {key:'dima', label:'👨 Дима'},
+    {key:'alena', label:'👩 Алена'},
+  ];
+
+  // Cards
+  var cardsHtml = people.map(function(p){
+    var inc = incFor(p.key);
+    var personal = expPersonal(p.key);
+    var shared = sharedPerPerson;
+    var total = personal + shared;
+    var balance = inc - total;
+    var balColor = balance >= 0 ? 'var(--g)' : 'var(--r)';
+    var balSign = balance >= 0 ? '+' : '';
+    return '<div style="background:var(--card);border:1px solid var(--border);border-left:3px solid '+OWNER_COLOR[p.key]+';border-radius:var(--r16);padding:16px;margin-bottom:10px">'
+      +'<div style="font-size:14px;font-weight:700;margin-bottom:12px">'+p.label+'</div>'
+      +'<div style="display:flex;flex-direction:column;gap:6px">'
+      +'<div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--t2)">💰 Доходы</span><span style="color:var(--g);font-weight:700;font-family:Unbounded,sans-serif;font-size:12px">+'+fmt(inc)+' ZL</span></div>'
+      +'<div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--t2)">👤 Личные расходы</span><span style="color:var(--r);font-weight:700;font-family:Unbounded,sans-serif;font-size:12px">−'+fmt(personal)+' ZL</span></div>'
+      +'<div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--t2)">👫 Общие + Саша (½)</span><span style="color:var(--r);font-weight:700;font-family:Unbounded,sans-serif;font-size:12px">−'+fmt(shared)+' ZL</span></div>'
+      +'<div style="height:1px;background:var(--border);margin:4px 0"></div>'
+      +'<div style="display:flex;justify-content:space-between;font-size:14px"><span style="color:var(--t);font-weight:700">Остаток</span><span style="color:'+balColor+';font-weight:700;font-family:Unbounded,sans-serif;font-size:16px">'+balSign+fmt(balance)+' ZL</span></div>'
+      +'</div></div>';
+  }).join('');
+
+  // Sasha note - included in shared
+
+  // Family total summary
+  var totalInc = incFor('dima') + incFor('alena');
+  var totalExp = exps.reduce(function(s,t){return s+parseFloat(t.amount);},0);
+  var totalBal = totalInc - totalExp;
+  cardsHtml += '<div style="background:linear-gradient(135deg,#0e1028,#111530);border:1px solid rgba(91,110,245,0.25);border-radius:var(--r16);padding:16px;margin-bottom:10px">'
+    +'<div style="font-size:13px;font-weight:700;color:var(--a2);margin-bottom:10px">👨‍👩‍👦 Семья итого</div>'
+    +'<div style="display:flex;flex-direction:column;gap:5px">'
+    +'<div style="display:flex;justify-content:space-between;font-size:12px"><span style="color:var(--t2)">Все доходы</span><span style="color:var(--g);font-family:Unbounded,sans-serif;font-size:11px;font-weight:700">+'+fmt(totalInc)+' ZL</span></div>'
+    +'<div style="display:flex;justify-content:space-between;font-size:12px"><span style="color:var(--t2)">Все расходы</span><span style="color:var(--r);font-family:Unbounded,sans-serif;font-size:11px;font-weight:700">−'+fmt(totalExp)+' ZL</span></div>'
+    +'<div style="height:1px;background:rgba(255,255,255,0.1);margin:4px 0"></div>'
+    +'<div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--t);font-weight:700">Остаток семьи</span><span style="color:'+(totalBal>=0?'var(--g)':'var(--r)')+';font-family:Unbounded,sans-serif;font-size:15px;font-weight:700">'+(totalBal>=0?'+':'')+fmt(totalBal)+' ZL</span></div>'
+    +'</div></div>';
+
+  document.getElementById('pnlCards').innerHTML = cardsHtml;
+
+  // Details breakdown
+  var detHtml = '<div style="font-size:11px;color:var(--t3);margin-bottom:10px">Общие расходы '+fmt(familyExp)+' ZL + Саша '+fmt(sashaExp)+' ZL = '+fmt(familyExp+sashaExp)+' ZL ÷ 2 = '+fmt(sharedPerPerson)+' ZL на каждого</div>';
+
+  // Categories in family
+  var famCats = {};
+  exps.filter(function(t){return (t.owner||'family')==='family'||(t.owner||'family')==='sasha';}).forEach(function(t){
+    famCats[t.cat] = (famCats[t.cat]||0)+parseFloat(t.amount);
+  });
+  var famEntries = Object.entries(famCats).sort(function(a,b){return b[1]-a[1];});
+  if(famEntries.length){
+    detHtml += '<div style="font-size:11px;font-weight:700;color:var(--t2);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.8px">👫 Общие расходы (включая Сашу) по категориям</div>';
+    detHtml += famEntries.map(function(e){
+      return '<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px">'
+        +'<span style="color:var(--t2)">'+(CAT_EM[e[0]]||'📦')+' '+e[0]+'</span>'
+        +'<span style="color:var(--t);font-weight:600">'+fmt(e[1])+' ZL</span>'
+        +'</div>';
+    }).join('');
+  }
+
+  document.getElementById('pnlDetails').innerHTML = detHtml;
+}
+
+
 function renderAll(){
   if(curTab==='home') renderHome();
   if(curTab==='payments') renderPayments();
@@ -1658,6 +1758,7 @@ function renderAll(){
   if(curTab==='goals') renderGoals();
   if(curTab==='tasks') renderTasks();
   if(curTab==='stats') renderStats();
+  if(curTab==='pnl') renderPnl();
   if(curTab==='converter') renderConverter();
   updTaskDot();
 }
