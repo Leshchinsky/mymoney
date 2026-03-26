@@ -1184,23 +1184,10 @@ function renderHome(){
   </div>`).join('');
 }
 
-function buildExpRow(t){
-  const overdue = isOverdue(t);
-  const today = isDueToday(t);
-  const rowStyle = overdue ? 'background:rgba(255,64,96,0.06)' : today ? 'background:rgba(255,201,77,0.06)' : t.paid?'':'opacity:0.78';
-  const dayColor = overdue ? 'color:var(--r);font-weight:700' : today ? 'color:var(--y);font-weight:700' : 'color:var(--t3)';
-  const badge = overdue ? '<span class="overdue-badge">ПРОСРОЧЕНО</span>' : today ? '<span class="overdue-badge" style="background:var(--ydim);color:var(--y)">СЕГОДНЯ</span>' : '';
-  const note = t.note ? '<div style="font-size:9px;color:var(--t3)">'+t.note+'</div>' : '';
-  return '<tr style="'+rowStyle+'">'
-    + '<td style="font-size:11px;max-width:130px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+t.name+badge+note+'</td>'
-    + '<td style="text-align:right"><span class="amt r">−'+fmt(t.amount)+'</span></td>'
-    + '<td style="text-align:center;font-size:11px;'+dayColor+'">'+(t.day||'-')+'</td>'
-    + '<td style="text-align:center"><button class="paid-btn '+(t.paid?'paid':'unpaid')+'" onclick="togglePaid('+t.id+')">'+(t.paid?'✓':'○')+'</button></td>'
-    + '<td style="white-space:nowrap"><button class="edit-btn" onclick="editTx('+t.id+')">✏️</button><button class="del-btn" onclick="delTx('+t.id+')">✕</button></td>'
-    + '</tr>';
-}
 
 
+
+var showOnlyUnpaid = false;
 
 function toggleUnpaidFilter(){
   showOnlyUnpaid = !showOnlyUnpaid;
