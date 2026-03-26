@@ -286,7 +286,12 @@ body{background:var(--bg);color:var(--t);font-family:'Manrope',sans-serif;font-s
 .cur-sel-inline{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:var(--card2);border:1px solid var(--border2);border-radius:var(--r8);padding:4px 8px;color:var(--t2);font-family:'Manrope',sans-serif;font-size:12px;font-weight:600;cursor:pointer;outline:none;-webkit-appearance:none}
 .converted-hint{font-size:11px;color:var(--b);margin-top:4px;min-height:16px;font-weight:600}
 
-/* EXPORT BTN */
+/* OVERDUE */
+.overdue-row td{background:rgba(255,64,96,0.06)!important}
+.overdue-badge{display:inline-block;background:var(--rdim);color:var(--r);font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;margin-left:4px;letter-spacing:0.3px}
+.filter-active{background:var(--rdim)!important;border-color:rgba(255,64,96,0.4)!important;color:var(--r)!important}
+
+
 .exp-btn{display:flex;align-items:center;gap:8px;background:var(--card2);border:1px solid var(--border2);border-radius:var(--r12);padding:10px 14px;color:var(--t2);font-family:'Manrope',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s;width:100%;margin-bottom:10px}
 .exp-btn:active{border-color:var(--a);color:var(--a2)}
 
@@ -372,6 +377,16 @@ body{background:var(--bg);color:var(--t);font-family:'Manrope',sans-serif;font-s
 
     <!-- PAYMENTS -->
     <div class="screen" id="sc-payments">
+      <!-- Search & Filter bar -->
+      <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center">
+        <div style="flex:1;position:relative">
+          <input class="fi" id="paySearch" placeholder="🔍 Поиск по названию..." oninput="renderPayments()" style="padding-left:14px;font-size:13px">
+        </div>
+        <button id="filterUnpaidBtn" onclick="toggleUnpaidFilter()" style="flex-shrink:0;background:var(--card2);border:1px solid var(--border2);border-radius:var(--r12);padding:10px 12px;color:var(--t2);font-family:'Manrope',sans-serif;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all 0.2s">
+          Все
+        </button>
+      </div>
+
       <div class="sec-title">Доходы <button class="sec-add" onclick="openTx('income')">+ Добавить</button></div>
       <div class="card" style="margin-bottom:10px">
         <div id="incTable"></div>
@@ -1169,32 +1184,158 @@ function renderHome(){
   </div>`).join('');
 }
 
+function buildExpRow(t){
+  const overdue = isOverdue(t);
+  const today = isDueToday(t);
+  const rowStyle = overdue ? 'background:rgba(255,64,96,0.06)' : today ? 'background:rgba(255,201,77,0.06)' : t.paid?'':'opacity:0.78';
+  const dayColor = overdue ? 'color:var(--r);font-weight:700' : today ? 'color:var(--y);font-weight:700' : 'color:var(--t3)';
+  const badge = overdue ? '<span class="overdue-badge">ПРОСРОЧЕНО</span>' : today ? '<span class="overdue-badge" style="background:var(--ydim);color:var(--y)">СЕГОДНЯ</span>' : '';
+  const note = t.note ? '<div style="font-size:9px;color:var(--t3)">'+t.note+'</div>' : '';
+  return '<tr style="'+rowStyle+'">'
+    + '<td style="font-size:11px;max-width:130px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+t.name+badge+note+'</td>'
+    + '<td style="text-align:right"><span class="amt r">−'+fmt(t.amount)+'</span></td>'
+    + '<td style="text-align:center;font-size:11px;'+dayColor+'">'+(t.day||'-')+'</td>'
+    + '<td style="text-align:center"><button class="paid-btn '+(t.paid?'paid':'unpaid')+'" onclick="togglePaid('+t.id+')">'+(t.paid?'✓':'○')+'</button></td>'
+    + '<td style="white-space:nowrap"><button class="edit-btn" onclick="editTx('+t.id+')">✏️</button><button class="del-btn" onclick="delTx('+t.id+')">✕</button></td>'
+    + '</tr>';
+}
+
+
+
+function toggleUnpaidFilter(){
+  showOnlyUnpaid = !showOnlyUnpaid;
+  const btn = document.getElementById('filterUnpaidBtn');
+  if(showOnlyUnpaid){
+    btn.textContent = '🔴 Неоплаченные';
+    btn.classList.add('filter-active');
+  } else {
+    btn.textContent = 'Все';
+    btn.classList.remove('filter-active');
+  }
+  renderPayments();
+}
+
+function dayToNum(day){
+  if(!day || day==='-') return 99;
+  const m = day.match(/(\d+)/);
+  return m ? parseInt(m[1]) : 99;
+}
+
+function isOverdue(t){
+  if(t.paid || t.type==='income') return false;
+  const dayNum = dayToNum(t.day);
+  if(dayNum === 99) return false;
+  const today = new Date();
+  const todayDay = today.getDate();
+  const todayMonth = today.getMonth();
+  const todayYear = today.getFullYear();
+  // overdue if same month/year and day already passed, or past month
+  if(selY < todayYear) return true;
+  if(selY === todayYear && selM < todayMonth) return true;
+  if(selY === todayYear && selM === todayMonth && dayNum < todayDay) return true;
+  return false;
+}
+
+function isDueToday(t){
+  if(t.paid || t.type==='income') return false;
+  const dayNum = dayToNum(t.day);
+  if(dayNum === 99) return false;
+  const today = new Date();
+  return selY === today.getFullYear() && selM === today.getMonth() && dayNum === today.getDate();
+}
+
+
 function renderPayments(){
-  const tx=getTx();
-  const incomes=tx.filter(t=>t.type==='income');
-  const exps=tx.filter(t=>t.type==='expense');
-  const incTotal=incomes.reduce((s,x)=>s+parseFloat(x.amount),0);
-  document.getElementById('incTotal').textContent=fmt(incTotal)+' ZL';
-  const it=document.getElementById('incTable');
-  if(!incomes.length){it.innerHTML='<div class="empty" style="padding:12px 0"><p>Нет доходов</p></div>';}
-  else{it.innerHTML=`<div class="tbl-wrap"><table class="tbl"><tr><th>Источник</th><th style="text-align:right">Сумма</th><th>Дата</th><th></th></tr>
-    ${incomes.map(t=>`<tr><td style="font-size:12px">${t.name}${t.note?`<div style="font-size:9px;color:var(--t3)">${t.note}</div>`:''}</td><td style="text-align:right"><span class="amt g">+${fmt(t.amount)}</span></td><td style="font-size:11px;color:var(--t3)">${t.day||'-'}</td><td style="white-space:nowrap"><button class="edit-btn" onclick="editTx(${t.id})">✏️</button><button class="del-btn" onclick="delTx(${t.id})">✕</button></td></tr>`).join('')}
-  </table></div>`;}
-  const cats=[...new Set(exps.map(e=>e.cat))];
-  const cont=document.getElementById('expByCat');
-  if(!exps.length){cont.innerHTML=`<div class="card"><div class="empty"><div class="empty-em">📋</div><p>Нет расходов</p></div></div>`;return;}
-  cont.innerHTML=cats.map(cat=>{
-    const rows=exps.filter(e=>e.cat===cat);
-    const total=rows.reduce((s,r)=>s+parseFloat(r.amount),0);
-    const paidTotal=rows.filter(r=>r.paid).reduce((s,r)=>s+parseFloat(r.amount),0);
-    const cc=CAT_CHIP[cat]||'c-misc';
-    return `<div class="card" style="margin-bottom:10px;padding:10px">
-      <div class="cat-hdr"><span class="chip ${cc}">${CAT_EM[cat]||'📦'} ${cat}</span><span class="cat-hdr-total">${fmt(paidTotal)}/${fmt(total)} ZL</span></div>
-      <div class="tbl-wrap"><table class="tbl"><tr><th>Название</th><th style="text-align:right">Сумма</th><th style="text-align:center">Дата</th><th style="text-align:center">✓</th><th></th></tr>
-        ${rows.map(t=>`<tr style="${t.paid?'':'opacity:0.75'}"><td style="font-size:11px;max-width:130px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.name}${t.note?`<div style="font-size:9px;color:var(--t3)">${t.note}</div>`:''}</td><td style="text-align:right"><span class="amt r">−${fmt(t.amount)}</span></td><td style="text-align:center;font-size:11px;color:var(--t3)">${t.day||'-'}</td><td style="text-align:center"><button class="paid-btn ${t.paid?'paid':'unpaid'}" onclick="togglePaid(${t.id})">${t.paid?'✓':'○'}</button></td><td style="white-space:nowrap"><button class="edit-btn" onclick="editTx(${t.id})">✏️</button><button class="del-btn" onclick="delTx(${t.id})">✕</button></td></tr>`).join('')}
-      </table></div></div>`;
-  }).join('');
-  document.getElementById('paySbox').innerHTML=sboxHTML(calcM());
+  const tx = getTx();
+  const searchQ = (document.getElementById('paySearch')?.value||'').toLowerCase().trim();
+
+  // INCOMES
+  const incAll = tx.filter(function(t){return t.type==='income';});
+  const incomes = searchQ ? incAll.filter(function(t){return t.name.toLowerCase().includes(searchQ);}) : incAll;
+  const incTotal = incAll.reduce(function(s,x){return s+parseFloat(x.amount);},0);
+  document.getElementById('incTotal').textContent = fmt(incTotal)+' ZL';
+  var it = document.getElementById('incTable');
+  if(!incomes.length){
+    it.innerHTML = '<div class="empty" style="padding:12px 0"><p>Нет доходов</p></div>';
+  } else {
+    var incRows = incomes.map(function(t){
+      var note = t.note ? '<div style="font-size:9px;color:var(--t3)">'+t.note+'</div>' : '';
+      return '<tr><td style="font-size:12px">'+t.name+note+'</td>'
+        +'<td style="text-align:right"><span class="amt g">+'+fmt(t.amount)+'</span></td>'
+        +'<td style="font-size:11px;color:var(--t3)">'+(t.day||'-')+'</td>'
+        +'<td style="white-space:nowrap"><button class="edit-btn" onclick="editTx('+t.id+')">✏️</button>'
+        +'<button class="del-btn" onclick="delTx('+t.id+')">✕</button></td></tr>';
+    }).join('');
+    it.innerHTML = '<div class="tbl-wrap"><table class="tbl"><tr><th>Источник</th><th style="text-align:right">Сумма</th><th>Дата</th><th></th></tr>'+incRows+'</table></div>';
+  }
+
+  // EXPENSES
+  var exps = tx.filter(function(t){return t.type==='expense';});
+  if(showOnlyUnpaid) exps = exps.filter(function(t){return !t.paid;});
+  if(searchQ) exps = exps.filter(function(t){
+    return t.name.toLowerCase().includes(searchQ) || (t.cat||'').toLowerCase().includes(searchQ);
+  });
+  // Sort by day number
+  exps.sort(function(a,b){return dayToNum(a.day)-dayToNum(b.day);});
+
+  var cont = document.getElementById('expByCat');
+  if(!exps.length){
+    var emptyMsg = showOnlyUnpaid ? 'Все оплачено! ✅' : (searchQ ? 'Ничего не найдено' : 'Нет расходов');
+    cont.innerHTML = '<div class="card"><div class="empty"><div class="empty-em">📋</div><p>'+emptyMsg+'</p></div></div>';
+    document.getElementById('paySbox').innerHTML = sboxHTML(calcM());
+    return;
+  }
+
+  // Summary badges
+  var overdueCount = exps.filter(function(t){return isOverdue(t);}).length;
+  var todayCount = exps.filter(function(t){return isDueToday(t);}).length;
+  var badgesHtml = '';
+  if(overdueCount>0) badgesHtml += '<span style="background:var(--rdim);color:var(--r);font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px;margin-right:6px">⚠️ Просрочено: '+overdueCount+'</span>';
+  if(todayCount>0) badgesHtml += '<span style="background:var(--ydim);color:var(--y);font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px">📅 Сегодня: '+todayCount+'</span>';
+
+  // Group by category (preserve order)
+  var cats = [];
+  exps.forEach(function(e){ if(cats.indexOf(e.cat)<0) cats.push(e.cat); });
+
+  var html = badgesHtml ? '<div style="margin-bottom:10px">'+badgesHtml+'</div>' : '';
+
+  cats.forEach(function(cat){
+    var rows = exps.filter(function(e){return e.cat===cat;});
+    var total = rows.reduce(function(s,r){return s+parseFloat(r.amount);},0);
+    var paidTotal = rows.filter(function(r){return r.paid;}).reduce(function(s,r){return s+parseFloat(r.amount);},0);
+    var cc = CAT_CHIP[cat]||'c-misc';
+    var catOverdue = rows.filter(function(r){return isOverdue(r);}).length;
+    var catBadge = catOverdue>0 ? '<span style="font-size:9px;color:var(--r);font-weight:700;margin-left:4px">⚠️'+catOverdue+'</span>' : '';
+
+    var rowsHtml = rows.map(function(t){
+      var overdue = isOverdue(t);
+      var today = isDueToday(t);
+      var rowBg = overdue ? 'background:rgba(255,64,96,0.07)' : (today ? 'background:rgba(255,201,77,0.07)' : (t.paid?'':'opacity:0.78'));
+      var dayStyle = overdue ? 'color:var(--r);font-weight:700' : (today ? 'color:var(--y);font-weight:700' : 'color:var(--t3)');
+      var badge = overdue ? '<span style="display:inline-block;background:var(--rdim);color:var(--r);font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;margin-left:4px">ПРОСРОЧЕНО</span>'
+        : (today ? '<span style="display:inline-block;background:var(--ydim);color:var(--y);font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;margin-left:4px">СЕГОДНЯ</span>' : '');
+      var note = t.note ? '<div style="font-size:9px;color:var(--t3)">'+t.note+'</div>' : '';
+      return '<tr style="'+rowBg+'">'
+        +'<td style="font-size:11px;max-width:130px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+t.name+badge+note+'</td>'
+        +'<td style="text-align:right"><span class="amt r">−'+fmt(t.amount)+'</span></td>'
+        +'<td style="text-align:center;font-size:11px;'+dayStyle+'">'+(t.day||'-')+'</td>'
+        +'<td style="text-align:center"><button class="paid-btn '+(t.paid?'paid':'unpaid')+'" onclick="togglePaid('+t.id+')">'+(t.paid?'✓':'○')+'</button></td>'
+        +'<td style="white-space:nowrap"><button class="edit-btn" onclick="editTx('+t.id+')">✏️</button><button class="del-btn" onclick="delTx('+t.id+')">✕</button></td>'
+        +'</tr>';
+    }).join('');
+
+    var em = CAT_EM[cat]||'📦';
+    html += '<div class="card" style="margin-bottom:10px;padding:10px">'
+      +'<div class="cat-hdr"><span class="chip '+cc+'">'+em+' '+cat+'</span>'+catBadge
+      +'<span class="cat-hdr-total">'+fmt(paidTotal)+'/'+fmt(total)+' ZL</span></div>'
+      +'<div class="tbl-wrap"><table class="tbl">'
+      +'<tr><th>Название</th><th style="text-align:right">Сумма</th><th style="text-align:center">Дата</th><th style="text-align:center">✓</th><th></th></tr>'
+      +rowsHtml
+      +'</table></div></div>';
+  });
+
+  cont.innerHTML = html;
+  document.getElementById('paySbox').innerHTML = sboxHTML(calcM());
 }
 
 function renderSavings(){
