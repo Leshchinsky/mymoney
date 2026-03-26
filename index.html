@@ -1411,7 +1411,7 @@ function renderPayments(){
         : (today ? '<span style="display:inline-block;background:var(--ydim);color:var(--y);font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;margin-left:4px">СЕГОДНЯ</span>' : '');
       var note = t.note ? '<div style="font-size:9px;color:var(--t3)">'+t.note+'</div>' : '';
       return '<tr style="'+rowBg+'">'
-        +'<td style="font-size:11px;max-width:130px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+t.name+badge+note+'</td>'
+        +'<td style="font-size:11px;max-width:130px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+t.name+badge+((t.owner&&t.owner!=='family')?'<span style="display:inline-block;font-size:8px;font-weight:700;padding:1px 5px;border-radius:3px;margin-left:4px;color:'+(OWNER_COLOR[t.owner]||'var(--t3)')+';background:'+(OWNER_BG[t.owner]||'rgba(100,100,140,0.12)')+'">'+(OWNER_LABEL[t.owner]||t.owner)+'</span>':'<span style="display:inline-block;font-size:8px;padding:1px 5px;border-radius:3px;margin-left:4px;color:var(--a2);background:rgba(91,110,245,0.1)">👫</span>')+note+'</td>'
         +'<td style="text-align:right"><span class="amt r">−'+fmt(t.amount)+'</span></td>'
         +'<td style="text-align:center;font-size:11px;'+dayStyle+'">'+(t.day||'-')+'</td>'
         +'<td style="text-align:center"><button class="paid-btn '+(t.paid?'paid':'unpaid')+'" onclick="togglePaid('+t.id+')">'+(t.paid?'✓':'○')+'</button></td>'
