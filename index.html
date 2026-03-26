@@ -370,6 +370,10 @@ body{background:var(--bg);color:var(--t);font-family:'Manrope',sans-serif;font-s
         </div>
       </div>
       <div class="sbox" id="homeSbox"></div>
+
+      <!-- Owner breakdown -->
+      <div id="ownerBreakdown" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px"></div>
+
       <div class="qrow">
         <button class="qbtn inc" onclick="openTx('income')">＋ Доход</button>
         <button class="qbtn exp" onclick="openTx('expense')">— Расход</button>
@@ -392,6 +396,15 @@ body{background:var(--bg);color:var(--t);font-family:'Manrope',sans-serif;font-s
         <button id="filterUnpaidBtn" onclick="toggleUnpaidFilter()" style="flex-shrink:0;background:var(--card2);border:1px solid var(--border2);border-radius:var(--r12);padding:10px 12px;color:var(--t2);font-family:'Manrope',sans-serif;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all 0.2s">
           Все
         </button>
+      </div>
+
+      <!-- Owner filter -->
+      <div class="pills" id="ownerPills" style="margin-bottom:8px">
+        <div class="pill on" data-owner="all">Все</div>
+        <div class="pill" data-owner="family">👫 Общие</div>
+        <div class="pill" data-owner="dima">👨 Дима</div>
+        <div class="pill" data-owner="alena">👩 Алена</div>
+        <div class="pill" data-owner="sasha">👦 Саша</div>
       </div>
 
       <div class="sec-title">Доходы <button class="sec-add" onclick="openTx('income')">+ Добавить</button></div>
@@ -635,6 +648,15 @@ body{background:var(--bg);color:var(--t);font-family:'Manrope',sans-serif;font-s
         <option>КРАСОТА И ОТДЫХ</option><option>МАШИНА</option><option>НАЛОГИ РБ</option>
         <option>НАЛОГИ ПОЛЬША</option><option>РАЗНЫЕ РАСХОДЫ</option><option>КРЕДИТЫ</option>
         <option>СТРАХОВКИ ТЕХНИКИ</option><option>ДОЛГИ</option>
+      </select>
+    </div>
+    <div class="fg" id="txOwnerG">
+      <label class="fl">Кто платит</label>
+      <select class="fi" id="txOwner">
+        <option value="family">👫 Общие</option>
+        <option value="dima">👨 Дима</option>
+        <option value="alena">👩 Алена</option>
+        <option value="sasha">👦 Саша</option>
       </select>
     </div>
     <div class="fg"><label class="fl">Примечание</label><input class="fi" id="txNote" placeholder="Необязательно"></div>
@@ -1046,6 +1068,7 @@ function editTx(id){
   editTxId=id; txType=t.type; setTT(txType);
   document.getElementById('txName').value=t.name; document.getElementById('txAmt').value=t.amount; document.getElementById('txDay').value=t.day||''; document.getElementById('txNote').value=t.note||''; document.getElementById('txEditId').value=id; document.getElementById('txCur').value='ZL'; document.getElementById('txConvertHint').textContent='';
   if(t.cat) document.getElementById('txCat').value=t.cat;
+  document.getElementById('txOwner').value = t.owner||'family';
   openOv('txOv');
 }
 function setTT(t){ txType=t; document.getElementById('btnInc').className=t==='income'?'type-btn a-inc':'type-btn'; document.getElementById('btnExp').className=t==='expense'?'type-btn a-exp':'type-btn'; document.getElementById('txCatG').style.display=t==='expense'?'block':'none'; document.getElementById('txTitle').textContent=t==='income'?'Доход':'Расход'; }
@@ -1154,6 +1177,14 @@ async function saveTask(){
 async function toggleTask(id){ const t=tasks.find(x=>x.id===id); if(!t)return; const nd=!t.done; try{ await sbPatch('tasks',id,{done:nd}); t.done=nd; if(nd){points+=5;localStorage.setItem('flp_pts',points);toast('✅ +5 очков');} checkAch(); renderTasks(); updTaskDot(); }catch(e){ toast('❌ Ошибка'); } }
 async function delTask(id){ try{ await sbDelete('tasks',id); tasks=tasks.filter(x=>x.id!==id); renderTasks(); updTaskDot(); toast('🗑️ Удалено'); }catch(e){ toast('❌ Ошибка'); } }
 function updTaskDot(){ const w=document.getElementById('tNavWrap'),u=tasks.filter(t=>!t.done).length,e=w.querySelector('.nb-dot'); if(u>0&&!e){const d=document.createElement('div');d.className='nb-dot';w.appendChild(d);}else if(u===0&&e)e.remove(); }
+document.getElementById('ownerPills').addEventListener('click', function(e){
+  var p = e.target.closest('.pill'); if(!p) return;
+  document.querySelectorAll('#ownerPills .pill').forEach(function(x){x.classList.remove('on');});
+  p.classList.add('on');
+  activeOwner = p.dataset.owner;
+  renderPayments();
+});
+
 document.getElementById('tPills').addEventListener('click',e=>{ const p=e.target.closest('.pill');if(!p)return; document.querySelectorAll('#tPills .pill').forEach(x=>x.classList.remove('on')); p.classList.add('on'); actTag=p.dataset.tag; renderTasks(); });
 
 // ════════════════════════════════════════════════════
@@ -1208,6 +1239,19 @@ function renderHome(){
   document.getElementById('hExp').textContent=fmt(c.expFact)+' ZL';
   document.getElementById('hSav').textContent=fmt(c.savZl)+' ZL';
   document.getElementById('homeSbox').innerHTML=sboxHTML(c);
+
+  // Owner breakdown
+  var tx2 = getTx().filter(function(t){return t.type==='expense';});
+  var owners = ['dima','alena','sasha','family'];
+  var obHtml = owners.map(function(o){
+    var sum = tx2.filter(function(t){return (t.owner||'family')===o;}).reduce(function(s,t){return s+parseFloat(t.amount);},0);
+    if(!sum && o !== 'family') return '';
+    return '<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r12);padding:11px 12px">'
+      +'<div style="font-size:10px;color:var(--t3);margin-bottom:4px">'+OWNER_LABEL[o]+'</div>'
+      +'<div style="font-family:Unbounded,sans-serif;font-size:13px;font-weight:700;color:'+OWNER_COLOR[o]+'">'+fmt(sum)+' ZL</div>'
+      +'</div>';
+  }).filter(Boolean).join('');
+  document.getElementById('ownerBreakdown').innerHTML = obHtml;
   const tx=getTx().slice(0,6);
   const rl=document.getElementById('homeRecent');
   if(!tx.length){rl.innerHTML='<div class="empty"><div class="empty-em">💸</div><p>Нет операций за этот месяц</p></div>';return;}
@@ -1223,6 +1267,11 @@ function renderHome(){
 
 
 var showOnlyUnpaid = false;
+var activeOwner = 'all';
+
+var OWNER_LABEL = {family:'👫 Общие', dima:'👨 Дима', alena:'👩 Алена', sasha:'👦 Саша'};
+var OWNER_COLOR = {family:'var(--a2)', dima:'var(--b)', alena:'var(--p)', sasha:'var(--g)'};
+var OWNER_BG = {family:'rgba(91,110,245,0.12)', dima:'rgba(56,196,240,0.12)', alena:'rgba(200,85,255,0.12)', sasha:'rgba(0,201,122,0.12)'};
 
 function toggleUnpaidFilter(){
   showOnlyUnpaid = !showOnlyUnpaid;
@@ -1281,7 +1330,12 @@ function renderPayments(){
     it.innerHTML = '<div class="empty" style="padding:12px 0"><p>Нет доходов</p></div>';
   } else {
     var incRows = incomes.map(function(t){
-      var note = t.note ? '<div style="font-size:9px;color:var(--t3)">'+t.note+'</div>' : '';
+      var ownerLbl = OWNER_LABEL[t.owner||'family'];
+  var ownerCol = OWNER_COLOR[t.owner||'family'];
+  var ownerBadge = t.owner && t.owner !== 'family'
+    ? '<span style="display:inline-block;font-size:8px;font-weight:700;padding:1px 5px;border-radius:3px;margin-left:4px;color:'+ownerCol+';background:'+OWNER_BG[t.owner||'family']+'">'+ownerLbl+'</span>'
+    : '';
+  var note = t.note ? '<div style="font-size:9px;color:var(--t3)">'+t.note+'</div>' : '';
       return '<tr><td style="font-size:12px">'+t.name+note+'</td>'
         +'<td style="text-align:right"><span class="amt g">+'+fmt(t.amount)+'</span></td>'
         +'<td style="font-size:11px;color:var(--t3)">'+(t.day||'-')+'</td>'
@@ -1297,6 +1351,7 @@ function renderPayments(){
   if(searchQ) exps = exps.filter(function(t){
     return t.name.toLowerCase().includes(searchQ) || (t.cat||'').toLowerCase().includes(searchQ);
   });
+  if(activeOwner !== 'all') exps = exps.filter(function(t){ return (t.owner||'family') === activeOwner; });
   // Sort by day number
   exps.sort(function(a,b){return dayToNum(a.day)-dayToNum(b.day);});
 
