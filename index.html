@@ -1756,6 +1756,51 @@ function renderPnl(){
 }
 
 
+async function copyToNextMonth(){
+  const nextM = selM === 11 ? 0 : selM + 1;
+  const nextY = selM === 11 ? selY + 1 : selY;
+  const nextName = MNS[nextM] + ' ' + nextY;
+  const existing = await sbGet('transactions', 'month=eq.'+nextM+'&year=eq.'+nextY);
+  if(existing.length > 0){
+    const ok = confirm('⚠️ В '+nextName+' уже есть '+existing.length+' записей.\n\nДобавить ещё? (существующие не удалятся)');
+    if(!ok) return;
+  } else {
+    const ok = confirm('📋 Скопировать все платежи текущего месяца в '+nextName+'?\n\nВсе записи будут скопированы с paid = false.');
+    if(!ok) return;
+  }
+  const txs = getTx();
+  if(!txs.length){ toast('⚠️ Нет данных для копирования'); return; }
+  setSyncStatus('syncing');
+  toast('⏳ Копирование...');
+  try {
+    const copies = txs.map(function(t){
+      var r = Object.assign({}, t);
+      delete r.id; delete r.created_at;
+      r.month = nextM; r.year = nextY;
+      r.paid = r.type === 'income' ? true : false;
+      return r;
+    });
+    for(var i=0; i<copies.length; i+=20){
+      var batch = copies.slice(i, i+20);
+      await Promise.all(batch.map(function(r){ return sbPost('transactions', r); }));
+    }
+    transactions = await sbGet('transactions', 'order=created_at.desc');
+    setSyncStatus('ok');
+    toast('✅ Скопировано ' + copies.length + ' записей в ' + nextName + '!');
+    const sw2 = confirm('Перейти в ' + nextName + '?');
+    if(sw2){
+      document.getElementById('mSel').value = nextM;
+      document.getElementById('ySel').value = nextY;
+      selM = nextM; selY = nextY;
+      renderAll();
+    }
+  } catch(e){
+    setSyncStatus('error');
+    toast('❌ Ошибка: ' + e.message);
+  }
+}
+
+
 function renderAll(){
   if(curTab==='home') renderHome();
   if(curTab==='payments') renderPayments();
